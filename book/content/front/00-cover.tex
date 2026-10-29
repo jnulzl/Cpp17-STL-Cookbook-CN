@@ -1,0 +1,11 @@
+% book/content/front/00-cover.tex —— 封面（原书封面整页出血，改图请替换 images/cover.jpg）
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  \begin{scope}
+    % 裁剪区 = 整页，超出的部分被切掉，保证四边无白边
+    \clip (current page.south west) rectangle (current page.north east);
+    \node[anchor=center, inner sep=0pt] at (current page.center)
+      {\includegraphics[width=\paperwidth]{images/cover.jpg}};
+  \end{scope}
+\end{tikzpicture}%
+\clearpage

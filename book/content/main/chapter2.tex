@@ -1,0 +1,1760 @@
+% chapterintro
+% ==============================
+% 第2章 导言：chapter2-0-chinese.md
+C++标准库中有大量的标准容器。容器通常包含一组数据或对象的集合。容器的厉害之处在于几乎可以和任何类型的对象一起使用，所以我们只需要为程序选择合适的容器即可。STL带给我们栈、自动增长的vector、map等等。这样我们就可以集中精力于我们的应用，而不用重复制作轮子。了解所有容器，对于C++开发者来说至关重要。
+
+STL容器的分类如下，会在各节中进行详细描述：
+
+\begin{itemize}
+\item 连续存储
+
+\item 列表存储
+
+\item 搜索树
+
+\item 哈希表
+
+\item 容器适配器
+
+\end{itemize}
+
+\mySmallsection{连续存储}
+
+想要存储一组对象最简单的方式，就是将其一个接一个的存在一块比较大的内存当中。内存可以使用随机访问的方式进行，其时间复杂度为O(1)。
+
+最简单的方式就是使用\texttt{std::array}，其就是对C风格数组的一种包装。不过，\texttt{std::array}要比C风格数组要先进的多，因为其没有运行时开销，而且进行元素添加时，也会十分舒适和安全。还有一点和C风格数组一样，一旦创建，其长度就是固定的，创建过后无法改变长度。
+
+\texttt{std::vector}和\texttt{std::array}很类似，不过\texttt{std::vector}的长度可变。其会使用堆上的内存来存储对象。当新元素添加到\texttt{vector}中后，当前长度超过了原始的长度，那么\texttt{std::vector}会自动新分配一段更大的内存，用来放置包括新插入元素的所有元素，并且释放之前所占用的内存。此外，当新元素需要插入到两个旧元素之间时，\texttt{std::vector}会移动当前已有的元素。当要删除\texttt{vector}中间的一个已存在元素，那么\texttt{vector}类会自动地移动其他对象，将删除后的缝隙填补起来。
+
+如果有大量元素在\texttt{std::vector}的头部或尾部进行插入或删除，那么为了填补空隙和移动已有元素，将会耗费很多时间。如遇到这样的情况，建议你考虑使用\texttt{std::deque}。对象集合会存储在多段固定长度的连续内存中，这些内存段是相互独立的。这就使得双向队列变得很简单，并且增长也很容易，因为不同的内存段相对独立，只需要将新分配的内存段加入就可以了，无需对其他已存在的内存段进行移动。减少的场景也是一样的。
+
+\mySmallsection{列表存储}
+
+\texttt{std::list}是一个典型的双向链表。如果是单向列表，那就需要进行遍历，所以\texttt{std::forward\_list}的优势在维护的复杂性上，因为其指针方向只有一个方向。列表遍历的时间复杂度是线性的O(n)。其在特定位置上插入和删除元素的时间复杂度为O(1)。
+
+\mySmallsection{搜索树}
+
+当对象集具有可进行排序的自然属性时，可以使用小于的关系将这些元素进行排序，我们就可以使用搜索树来保存这个排序关系。从名字就可以看出，搜索树可以帮助我们很容易的通过一个关键字查找到对应元素，其搜索的时间复杂度为O(log(n))。
+
+STL提供了不同种类的树，\texttt{std::set}是其中最简单的一种，保存元素不重复，存储的元素是可排序的(用一种树的结构)。
+
+\texttt{std::map}使用的是另一种方式，将存储的数据使用组对进行存储。一个组对有一个key值和一个对应值构成。搜索树会对key值部分进行排序，使组对能作为\texttt{std::map}的一种关联容器。\texttt{std::map}的key值和\texttt{std::set}的值一样，在整个树中只能存在一个。
+
+\texttt{std::multiset}和\texttt{std::multimap}是被特化的，key对象可以是重复的。
+
+\mySmallsection{哈希表}
+
+讨论关联容器时，搜索树并不是唯一的方式。使用哈希表查找元素的时间复杂度只有O(1)，不过这就会忽略其自然序，所以不能简单的使用排序的方式进行遍历。哈希表大小可由用户控制，并且可以单独选择哈希函数，这是一项很重要的特性，因为其性能与空间复杂度依赖于此。
+
+\texttt{std::unordered\_set}和\texttt{std::unordered\_map}具有很多接口与\texttt{std::set}和\texttt{std::map}一样，它们之间几乎可以相互替换。
+
+搜索树的实现中，容器都具有多个变种： \texttt{std::unordered\_multiset}和\texttt{std::unordered\_multimap}，这两种方法都取消了对象/键的唯一性，因此我们可以用相同的键存储多个元素。
+
+\mySmallsection{容器适配器}
+
+数组、列表、树和哈希表并不是存储和访问数据的唯一方式，这里还有栈、队列等其他的方式也可以存储和访问数据。类似的，越复杂的结构可以使用越原始的方式实现，并且STL使用以下形式的容器适配器进行操作：\texttt{std::stack}、\texttt{std::queue}和\texttt{std::priotity\_queue}。
+
+最牛X的是当我们需要这样的数据结构时，我们可以选择一种适配器。然后，当我们觉得到它们性能较差时，就可以改变一个模板参数，以便让适配器使用不同的容器实现。实践中，这也就意味着我们可以将\texttt{std::stack}实例中的元素类型从\texttt{std::vector}切换成\texttt{std::deque}。
+
+
+% --- recipe 1: chapter2-1-chinese.md ---
+\section{擦除/移除std::vector元素}
+
+由于\texttt{std::vector}能自动增长，并且使用方式简单，很受C++开发新手的喜爱。可以通过查阅手册，来了解这个容器该如何使用，比如删除元素。这样使用STL容器，只是了解容器的皮毛，容器应该帮助我们写出更简洁、维护性好和更快的代码。
+
+本节的全部内容都是在一个\texttt{vector}实例中删除元素。当\texttt{vector}中部的一个元素消失了，那么位于消失元素右边的所有元素都要往左移(这种操作的时间复杂度为O(n)。新手们会用循环来做这件事，因为循环的确好用。不过，循环会降低代码的优化空间。最后，比起STL的方法，循环是既不快，也不美，
+
+\#\# How to do it...
+
+首先，我们使用整数来填充一个\texttt{std::vector}实例，之后剔除一些特定元素。我们演示的从\texttt{vector}实例中删除元素正确的方法。
+
+\begin{enumerate}
+\item 包含文件是首要任务。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+#include <algorithm>
+\end{codebox}
+
+\item 声明我们所要使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 现在我们来创建一个\texttt{vector}实例，并用整数填满它。
+
+\begin{codebox}[cpp]
+int main(){
+    vector<int> v{1, 2, 3, 2, 5, 2, 6, 2, 4, 8};
+\end{codebox}
+
+\item 然后移除一些元素。需要我们移除哪些呢？2出现的太多次了，就选择2吧。让我们移除它们吧。
+
+\begin{codebox}[cpp]
+    const auto new_end(remove(begin(v), end(v), 2)); 
+\end{codebox}
+
+\item 已经完成了两步中的一步。\texttt{vector}在删除这些元素之后，长度并没有发生变化。那么下一步就让这个\texttt{vector}变得短一些。
+
+\begin{codebox}[cpp]
+    v.erase(new_end, end(v));
+\end{codebox}
+
+\item 我们在这里暂停一下，输出一下当前\texttt{vector}实例中所包含的元素。
+
+\begin{codebox}[cpp]
+for(auto i : v){
+    cout << i << ", "; 
+}
+cout << '\n';
+\end{codebox}
+
+\item 现在，让我们来移除一组指定的数据。为了完成这项工作，我们先定义了一个谓词函数，其可接受一个数作为参数，当这个数是奇数时，返回true。
+
+\begin{codebox}[cpp]
+    const auto odd([](int i){return i % 2 != 0;});
+\end{codebox}
+
+\item 这里我们使用\texttt{remove\_if}函数，使用上面定义的谓词函数，来删除特定的元素。这里我们将上面删除元素的步骤合二为一。
+
+\begin{codebox}[cpp]
+    v.erase(remove_if(begin(v), end(v), odd), end(v));
+\end{codebox}
+
+\item 所有的奇数都被删除，不过\texttt{vector}实例的容量依旧是10。最后一步中，我们将其容量修改为正确的大小。需要注意的是，这个操作会让\texttt{vector}重新分配一段内存，以匹配相应元素长度，\texttt{vector}中已存的元素会移动到新的内存块中。
+
+\begin{codebox}[cpp]
+    v.shrink_to_fit();
+\end{codebox}
+
+\item 打印一下现在\texttt{vector}实例中的元素。
+
+\begin{codebox}[cpp]
+    for (auto i : v) {
+        cout << i << ", ";
+    }
+    cout << '\n';
+}
+\end{codebox}
+
+\item 编译完成后，运行程序，就可以了看到两次删除元素后\texttt{vector}实例中所存在的元素。
+
+\begin{codebox}[text]
+$ ./main
+1, 3, 5, 6, 4, 8,
+6, 4, 8,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+我们可以清楚的看到，要从一个\texttt{vector}实例中移除一个元素，首先要进行删除，然后进行擦除，这样才算真正的移除。这会让人感到困惑，那就让我们近距离观察一下这些步骤是如何工作的。
+
+从\texttt{vector}中移除2的代码如下所示：
+
+\begin{codebox}[cpp]
+const auto new_end (remove(begin(v), end(v), 2));
+v.erase(new_end, end(v));
+\end{codebox}
+
+\texttt{std::begin}和\texttt{std::end}函数都以一个\texttt{vector}实例作为参数，并且返回其迭代器，迭代器分别指向第一个元素和最后一个元素，就如下图所示。
+
+\myGraphic{0.9}{images/chapter2/2-1-1.png}{}
+
+\texttt{std::remove}在删除2的时候，会先将非2元素进行移动，然后修改end迭代器的指向。该算法将严格保留所有非2个值的顺序。
+
+在2步中，2的值仍然存在，并且\texttt{vector}应该变短。并且4和8在现有的\texttt{vector}中重复了。这是怎么回事？
+
+让我们再来看一下所有的元素，目前\texttt{vector}的范围并不是原来那样了，其是从\texttt{begin}迭代器，到\texttt{new\_end}迭代器。\texttt{new\_end}之后的值其实就不属于\texttt{vector}实例了。我们会注意到，在这个范围内的数值，就是我们想要的正确结果，也就是所有的2都被移除了。
+
+最后，也就是为什么要调用\texttt{erase}函数：我们需要告诉\texttt{vector}实例，\texttt{new\_end}到\texttt{end}之间的元素我们不需要了。我们仅需要保留\texttt{begin}到\texttt{new\_end}间的元素就好了。\texttt{erase}函数会将\texttt{end}指向\texttt{new\_end}。这里需要注意的是\texttt{std::remove}会直接返回\texttt{vector}0迭代器，所以我们可以直接使用它。
+
+\begin{myInfoBox}
+Note: \texttt{vector}在这里不仅仅移动了内部指针。如果\texttt{vector}中元素比较复杂，那么在移除的时候，会使用其析构函数来销毁相应的对象。
+\end{myInfoBox}
+
+最后，这个向量就如步骤3所示：的确变短了。那些旧的元素已经不在\texttt{vector}的访问范围内了，不过其仍存储在内存中。
+
+为了不让\texttt{vector}浪费太多的内存，我们在最后调用了\texttt{shrink\_to\_fit}。该函数会为元素分配足够的空间，将剩余的元素移到该空间内，并且删除之前那个比较大的内存空间。
+
+在上面的第8步中，我们定义了一个谓词函数，并在\texttt{std::remove\_if}中使用了它。因为不论删除函数返回怎么样的迭代器，在对\texttt{vector}实例使用擦除函数都是安全的。如果\texttt{vector}中全是偶数，那么\texttt{std::remove\_if}不会做任何事情，并且返回\texttt{end}迭代器。之后的调用就为\texttt{v.erase(end, end); }，同样没有做任何事情。
+
+\mySmallsection{There's more...}
+
+\texttt{std::remove}函数对其他容器同样有效。当使用\texttt{std::array}时，其不支持\texttt{erase}操作，因为其内存空间固定，无法进行自动化处理。因为\texttt{std::remove}只是将要删除的元素移动到容器末尾，而不是将其真正删除，所以这个函数也可以用于不支持空间大小变化的数据类型。当然也有其他类似的方法，例如字符串中，可以用哨兵值\texttt{\textbackslash{}0}来覆盖原始的\texttt{end}迭代所指向的值。
+
+
+% --- recipe 2: chapter2-2-chinese.md ---
+\section{以O(1)的时间复杂度删除未排序std::vector中的元素}
+
+因为其他元素要填补删除元素所留下来的空隙，从而需要进行移动，所以从\texttt{std::vector}中删除元素的时间复杂度为O(n)。
+
+移动其他元素也与此类似，当很多很大或很复杂的元素需要移动，那么就会花费很长的时间。当无法保证顺序时，我们需要对其进行优化，这就是本节的内容。
+
+\mySmallsection{How to do it...}
+
+我们继续使用一些数字来填充\texttt{std::vector}实例，并且实现一个快速删除函数，以O(1)的时间复杂度删除vector中的元素。
+
+\begin{enumerate}
+\item 首先，包含必要的头文件：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+#include <algorithm>
+\end{codebox}
+
+\item 定义主函数，并定义一个\texttt{vector}实例：
+
+\begin{codebox}[cpp]
+int main(){
+    std::vector<int> v{123, 456, 789, 100, 200}; 
+\end{codebox}
+
+\item 下一步就要删除索引为2的元素(789)。我们所要用的来删除元素的函数在后面进行实现，我们先假设已经实现好了。执行完成后，来看下\texttt{vector}中的内容。
+
+\begin{codebox}[cpp]
+quick_remove_at(v, 2);
+for (int i : v){
+    std::cout << i << ", ";
+}
+std::cout << '\n';
+\end{codebox}
+
+\item 现在，我们将删除另外一个元素。我们想删除123，但是要假装不知道其索引。因此，我们要使用\texttt{std::find}函数在vector的合法范围内查找这个值，并返回其位置信息。得到索引信息后，我们就可以用\texttt{quick\_remove\_at}将对应元素删除了，这里所使用到的是一个重载版本，能接受迭代器作为输入参数。
+
+\begin{codebox}[cpp]
+    quick_remove_at(v, std::find(std::begin(v), std::end(v), 123));
+    for (int i : v) {
+        std::cout << i << ", ";
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 我们实现了两种\texttt{quick\_remove\_at}函数。具体实现代码中，需要注意与\texttt{main}函数的前后关系。两个函数都能接收一个\texttt{vector}实例的引用，所以这里允许用户使用各种类型的变量作为元素。对于我们来说，其类型就是\texttt{T}。第一个 \texttt{quick\_remove\_at}函数用来接收索引值，是一个具体的数，所以其接口如下所示：
+
+\begin{codebox}[cpp]
+template <typename T>
+void quick_remove_at(std::vector<T> &v, std::size_t idx)
+{
+\end{codebox}
+
+\item 现在来展示一下本节的重点——如何在不移动其他元素的情况下，快速删除某个元素？首先，将\texttt{vector}中最后一个元素进行重写。第二，删除\texttt{vector}中最后一个元素。就这两步。我们的代码会对输入进行检查。如果输入的索引值超出了范围，函数不会做任何事情。另外，该函数会在传入空\texttt{vector}的时候崩溃。
+
+\begin{codebox}[cpp]
+    if (idx < v.size()) {
+        v[idx] = std::move(v.back());
+        v.pop_back();
+    }
+}
+\end{codebox}
+
+\item 另一个\texttt{quick\_remove\_at}实现也很类似。用\texttt{std::vector<T>}的迭代器替换了具体的索引数值。因为泛型容器已经定义了这样的类型，所以获取它的类型并不复杂。
+
+\begin{codebox}[cpp]
+template <typename T>
+void quick_remove_at(std::vector<T> &v,
+                    typename std::vector<T>::iterator it)
+{
+\end{codebox}
+
+\item 现在我们来访问这些迭代器所指向的值。和另一个函数一样，我们会将最后一个元素进行重写。因为这次处理的是迭代器，所以我们要对迭代器指向的位置进行检查。如果其指向了一个错误的位置，我们就会阻止其解引用。
+
+\begin{codebox}[cpp]
+    if (it != std::end(v)) {
+\end{codebox}
+
+\item 在该代码块中，我们会做和之前一样的事情——我们要覆盖最后一个位置上的值——然后将最后一个元素从\texttt{vector}中剪掉。
+
+\begin{codebox}[cpp]
+        *it = std::move(v.back());
+        v.pop_back();
+    }
+}
+\end{codebox}
+
+\item 这就完事了。让我们来编译程序，并运行：
+
+\begin{codebox}[text]
+$ ./main
+123, 456, 200, 100,
+100, 456, 200,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+\texttt{quick\_remove\_at}函数移除元素非常快，而且不需要动其他元素。这个函数使用了更加具有创造性的做法：这是一种与实际元素交换的方式，然后将最后一个元素从\texttt{vector}中删除。虽然，最后一个元素与选中的元素没有实际的关联，但是它在这个特别的位置上，而且删除最后一个元素的成本最低！\texttt{vector}的长度在删除完成后，也就减少1，这就是这个函数所要做的。并且无需移动任何元素。看一下下面的图，可能有助于你理解这个函数的原理。
+
+\myGraphic{0.9}{images/chapter2/2-2-1.png}{}
+
+完成这两步的代码如下：
+
+\begin{codebox}[cpp]
+v.at(idx) = std::move(v.back());
+v.pop_back();
+\end{codebox}
+
+迭代器版本实现几乎一模一样：
+
+\begin{codebox}[cpp]
+*it = std::move(v.back());
+v.pop_back();
+\end{codebox}
+
+逻辑上，我们将选定元素与最后一个元素进行交换。不过，在代码中元素并没有进行交换，代码直接使用最后一个值覆盖了选定元素的值。为什么要这样？当我们交换元素时，就需要将选定的元素存储在一个临时变量中，并在最后将这个临时变量中的值放在\texttt{vector}的最后。这个临时变量是多余的，而且要删除的值对于我们来说是没有意义的，所以这里选择了直接覆盖的方式，更加高效的实现了删除。
+
+好了，交换是无意义的，覆盖是一种更好的方式。让我们来看下这个，当我们要获取\texttt{vector}最后元素的迭代器时，只需要简单的执行\texttt{*it = v.back();}就行了，对吧？完全正确，不过试想我们存储了一些非常长的字符串在\texttt{vector}中，或存储了另一个\texttt{vector}或\texttt{map}——这种情况下，简单的赋值将对这些值进行拷贝，那么就会带来非常大的开销。这里使用\texttt{std::move}可将这部分开销优化掉：比如字符串，指向堆内存上存储的一个大字符串。我们无需拷贝它。只需要移动这个字符串即可，就是将目标指针指向这块地址即可。移动源保持不变，不过出于无用的状态，这样做可以类似的让目标指针指向源指针所在的位置，然后将原始位置的元素删除，这样做即完成了元素移动，又免去了移动消耗。
+
+
+% --- recipe 3: chapter2-3-chinese.md ---
+\section{快速或安全的访问std::vector实例的方法}
+
+\texttt{std::vector}可能是STL容器中适用范围最广的，因为其存储数据的方式和数组一样，并且还有相对完善的配套设施。不过，非法访问一个\texttt{vector}实例还是十分危险的。如果一个\texttt{vector}实例具有100个元素，那当我们想要访问索引为123的元素时，程序就会崩溃掉。如果不崩溃，那么你就麻烦了，未定义的行为会导致一系列奇奇怪怪的错误，查都不好查。经验丰富的开发者会在访问前，对索引进行检查。这样的检查其实比较多余，因为很多人不知道\texttt{std::vector}有内置的检查机制。
+
+\mySmallsection{How to do it...}
+
+本节我们将使用两种不同的方式访问一个\texttt{std::vector}实例，并且利用其特性编写更加安全的代码。
+
+\begin{enumerate}
+\item 先包含相应的头文件，并且用1000个123填满一个vector实例：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+using namespace std;
+int main()
+{
+    const size_t container_size{1000};
+    vector<int> v(container_size, 123);
+\end{codebox}
+
+\item 我们通过\texttt{[]}操作符访问范围之外的元素：
+
+\begin{codebox}[cpp]
+cout << "Out of range element value: "
+     << v[container_size + 10] << '\n';
+\end{codebox}
+
+\item 之后我们使用\texttt{at}函数访问范围之外的元素：
+
+\begin{codebox}[cpp]
+    cout << "Out of range element value: "
+         << v.at(container_size + 10) << '\n';
+}
+\end{codebox}
+
+\item 让我们运行程序，看下会发生什么。下面的错误信息是由GCC给出。其他编译器也会通过不同方式给出类似的错误提示。第一种方式得到的结果比较奇怪。超出范围的访问方式并没有让程序崩溃，但是访问到了与123相差很大的数字。第二种方式中，我们看不到打印出来的结果，因为在打印之前程序已经崩溃了。当越界访问发生的时候，我们可以通过异常的方式更早的得知！
+
+\begin{codebox}[cpp]
+Out of range element value: -726629391
+terminate called after throwing an instance of 'std::out_of_range'
+what(): array::at: __n (which is 1010) >= _Nm (which is 1000)
+Aborted (core dumped)
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+\texttt{std::vector}提供了\texttt{[]}操作符和\texttt{at}函数，它们的作用几乎是一样的。\texttt{at}函数会检查给定的索引值是否越界，如果越界则返回一个异常。这对于很多情景都十分适用，不过因为检查越界要花费一些时间，所以\texttt{at}函数会让程序慢一些。
+
+当需要非常快的索引成员时，并能保证索引不越界，我们会使用\texttt{[]}快速访问\texttt{vector}实例。很多情况下，\texttt{at}函数在牺牲一点性能的基础上，有助于发现程序内在的bug。
+
+\begin{myInfoBox}
+Note： 默认使用\texttt{at}函数是一个好习惯。当代码的性能很差，但没有bug存在时，可以使用性能更高的操作符来替代\texttt{at}函数。
+\end{myInfoBox}
+
+\mySmallsection{There's more...}
+
+当然，我们需要处理越界访问，避免整个程序崩溃。为了对越界访问进行处理，我们可以使用截获异常的方式。可以用\texttt{try}代码块将调用at函数的部分包围，并且定义错误处理的\texttt{catch}代码段。
+
+\begin{codebox}[cpp]
+try {
+    std::cout << "Out of range element value: "
+              << v.at(container_size + 10) << '\n';
+} catch (const std::out_of_range &e) {
+    std::cout << "Ooops, out of range access detected: "
+              << e.what() << '\n';
+}
+\end{codebox}
+
+\begin{myInfoBox}
+Note: 顺带一提，\texttt{std::array}也提供了\texttt{at}函数。
+\end{myInfoBox}
+
+
+% --- recipe 4: chapter2-4-chinese.md ---
+\section{保持对std::vector实例的排序}
+
+\texttt{array}和\texttt{vector}不会对他们所承载的对象进行排序。有时我们去需要排序，但这不代表着我们总是要去切换数据结构，需要排序能够自动完成。在我们的例子有如有一个\texttt{std::vector}实例，将添加元素后的实例依旧保持排序，会是一项十分有用的功能。
+
+\mySmallsection{How to do it...}
+
+本节中我们使用随机单词对\texttt{std::vector}进行填充，然后对它进行排序。并在插入更多的单词的同时，保证\texttt{vector}实例中单词的整体排序。
+
+\begin{enumerate}
+\item 先包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <iterator>
+#include <cassert>
+\end{codebox}
+
+\item 声明所要使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 完成主函数，使用一些随机单词填充\texttt{vector}实例。
+
+\begin{codebox}[cpp]
+int main()
+{
+    vector<string> v {"some", "random", "words",
+                      "without", "order", "aaa",
+                      "yyy"};
+\end{codebox}
+
+\item 对vector实例进行排序。我们使用一些断言语句和STL中自带的\texttt{is\_sorted}函数对是否排序进行检查。
+
+\begin{codebox}[cpp]
+assert(false == is_sorted(begin(v), end(v)));
+sort(begin(v), end(v));
+assert(true == is_sorted(begin(v), end(v)));
+\end{codebox}
+
+\item 这里我们使用\texttt{insert\_sorted}函数添加随机单词到已排序的\texttt{vector}中，这个函数我们会在后面实现。这些新插入的单词应该在正确的位置上，并且\texttt{vector}实例需要保持已排序的状态。
+
+\begin{codebox}[cpp]
+insert_sorted(v, "foobar");
+insert_sorted(v, "zzz");
+\end{codebox}
+
+\item 现在，我们来实现\texttt{insert\_sorted}函数。
+
+\begin{codebox}[cpp]
+void insert_sorted(vector<string> &v, const string &word)
+{
+    const auto insert_pos (lower_bound(begin(v), end(v), word));
+    v.insert(insert_pos, word);
+}
+\end{codebox}
+
+\item 回到主函数中，我们将\texttt{vector}实例中的元素进行打印。
+
+\begin{codebox}[cpp]
+    for (const auto &w : v) {
+        cout << w << " ";
+    }
+    cout << '\n';
+}   
+\end{codebox}
+
+\item 编译并运行后，我们得到如下已排序的输出。
+
+\begin{codebox}[cpp]
+aaa foobar order random some without words yyy zzz
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+程序整个过程都是围绕\texttt{insert\_sorted}展开，这也就是本节所要说明的：对于任意的新字符串，通过计算其所在位置，然后进行插入，从而保证\texttt{vector}整体的排序性。不过，这里我们假设的情况是，在插入之前，\texttt{vector}已经排序。否则，这种方法无法工作。
+
+这里我们使用STL中的\texttt{lower\_bound}对新单词进行定位，其可接收三个参数。头两个参数是容器开始和结尾的迭代器。这确定了我们单词\texttt{vector}的范围。第三个参数是一个单词，也就是要被插入的那个。函数将会找到大于或等于第三个参数的首个位置，然后返回指向这个位置的迭代器。
+
+获取了正确的位置，那就使用\texttt{vector}的成员函数\texttt{insert}将对应的单词插入到正确的位置上。
+
+\mySmallsection{There's more...}
+
+\texttt{insert\_sorted}函数很通用。如果需要其适应不同类型的参数，这样改函数就能处理其他容器所承载的类型，甚至是容器的类似，比如\texttt{std::set}、\texttt{std::deque}、\texttt{std::list}等等。(这里需要注意的是成员函数\texttt{lower\_bound}与 \texttt{std::lower\_bound}等价，不过成员函数的方式会更加高效，因为其只用于对应的数据集合)
+
+\begin{codebox}[cpp]
+template <typename C, typename T>
+void insert_sorted(C &v, const T &item)
+{
+    const auto insert_pos (lower_bound(begin(v), end(v), item));
+    v.insert(insert_pos, item);
+}
+\end{codebox}
+
+当我们要将\texttt{std::vector}类型转换为其他类型时，需要注意的是并不是所有容器都支持\texttt{std::sort}。该函数所对应的算法需要容器为可随机访问容器，例如\texttt{std::list}就无法进行排序。
+
+
+% --- recipe 5: chapter2-5-chinese.md ---
+\section{向std::map实例中高效并有条件的插入元素}
+
+我们需要用键值对填充一个\texttt{map}实例时，会碰到两种不同的情况：
+
+\begin{enumerate}
+\item 键不存在。创建一个全新的键值对。
+
+\item 键已存在。修改键所对应的值。
+
+\end{enumerate}
+
+我通常会使用\texttt{insert}或\texttt{emplace}函数对\texttt{map}插入新元素，如果插入不成功，那么就是第二种情况，就需要去修改现有的元素。\texttt{insert}和\texttt{emplace}都会创建一个新元素尝试插入到\texttt{map}实例中，不过在第二种情况下，这个新生成的元素会被扔掉。两种情况下，我们都会多余调用一次构造函数。
+
+C++17中，添加了\texttt{try\_emplace}函数，其只有在满足条件的情况下，才能插入新元素。让我们实现一个程序，建立一张表，列出各国亿万富翁的数量。我们例子中不会使用很大开销进行元素创建，不过我们的例子来源于生活，其能让你明白如何使用\texttt{try\_emplace}。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将实现一个应用，其能创建一张百万富翁的列表。这个列表中按国家区分，里面记录了各国富人的数量。
+
+\begin{enumerate}
+\item 包含头文件和声明命名空间。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <functional>
+#include <list>
+#include <map>
+using namespace std;
+\end{codebox}
+
+\item 定义一个结构器，代表对应的富翁。
+
+\begin{codebox}[cpp]
+struct billionaire {
+    string name;
+    double dollars;
+    string country;
+};
+\end{codebox}
+
+\item 主函数中，我们定义了一个百万富翁的列表。世界上有很多百万富翁，所以我们创建一个有限列表来存储这些富翁的信息。这个列表是已排序的。2017年福布斯富豪名单，世界百万富翁排行榜可以在 \texthref{https://www.forbes.com/billionaires/list} 查到。
+
+\begin{codebox}[cpp]
+int main()
+{
+    list<billionaire> billionaires {
+        {"Bill Gates", 86.0, "USA"},
+        {"Warren Buffet", 75.6, "USA"},
+        {"Jeff Bezos", 72.8, "USA"},
+        {"Amancio Ortega", 71.3, "Spain"},
+        {"Mark Zuckerberg", 56.0, "USA"},
+        {"Carlos Slim", 54.5, "Mexico"},
+        // ...
+        {"Bernard Arnault", 41.5, "France"},
+        // ...
+        {"Liliane Bettencourt", 39.5, "France"},
+        // ...
+        {"Wang Jianlin", 31.3, "China"},
+        {"Li Ka-shing", 31.2, "Hong Kong"}
+        // ...
+    };
+\end{codebox}
+
+\item 现在让我们定义一个表。这个表由表示国家名的字符串和一个组对构成。组对中会具有上面列表的一个(const)副本。这也就是每个国家最富有的人。组对中另一个变量是一个计数器，其会统计某国的富豪人数。
+
+\begin{codebox}[cpp]
+    map<string, pair<const billionaire, size_t>> m; 
+\end{codebox}
+
+\item 现在，让我们将列表中的数据尝试插入到组对中。每个组对中都包含了对应国家的百万富翁，并将计数器的值置成1。
+
+\begin{codebox}[cpp]
+    for (const auto &b : billionaires) {
+        auto [iterator, success] = m.try_emplace(b.country, b, 1);
+\end{codebox}
+
+\item 如果这一步成功，那就不用再做其他事了。我们使用b和1创建的组对已经插入到表中。如果因为键已存在而插入失败，那么组对就不会构建。当我们百万富翁结构体非常大时，我们需要将运行时拷贝的时间节省下来。不过，在不成功的情况下，我们还是要对计数器进行增加1的操作。
+
+\begin{codebox}[cpp]
+if (!success) {
+    iterator->second.second += 1;
+    }
+}
+\end{codebox}
+
+\item 现在，我们来打印一下每个国家百万富翁的数量，以及各个国家中最富有的人。
+
+\begin{codebox}[cpp]
+    for (const auto & [key, value] : m) {
+        const auto &[b, count] = value;
+        cout << b.country << " : " << count
+             << " billionaires. Richest is "
+             << b.name << " with " << b.dollars
+             << " B$\n";
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，就会得到下面的输出(这里的输出是不完整的，因为列表比较长)。
+
+\begin{codebox}[text]
+$ ./efficient_insert_or_modify
+China : 1 billionaires. Richest is Wang Jianlin with 31.3 B$
+France : 2 billionaires. Richest is Bernard Arnault with 41.5 B$
+Hong Kong : 1 billionaires. Richest is Li Ka-shing with 31.2 B$
+Mexico : 1 billionaires. Richest is Carlos Slim with 54.5 B$
+Spain : 1 billionaires. Richest is Amancio Ortega with 71.3 B$
+USA : 4 billionaires. Richest is Bill Gates with 86 B$
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节围绕着\texttt{std::map}中的\texttt{try\_emplace}函数展开，这个函数是C++17添加的。下面是其函数声明之一：
+
+\begin{codebox}[cpp]
+std::pair<iterator, bool> try_emplace(const key_type& k, Args&&... args);
+\end{codebox}
+
+其函数第一个参数\texttt{k}是插入的键，\texttt{args}表示这个键对应的值。如果我们成功的插入了元素，那么函数就会返回一个迭代器，其指向新节点在表中的位置，组对中布尔变量的值被置为true。当插入不成功，组对中的布尔变量值会置为false，并且迭代器指向与新元素冲突的位置。
+
+这个特性在我们的例子中非常有用——可以完美处理第一次访问到，和之后访问到的情况。
+
+\begin{myInfoBox}
+Note： \texttt{std::map}中\texttt{insert}和\texttt{emplace}方法完全相同。\texttt{try\_emplace}与它们不同的地方在于，在遇到已经存在的键时，不会去构造组对。当相应对象的类型需要很大开销进行构造时，这对于程序性能是帮助的。
+\end{myInfoBox}
+
+\mySmallsection{There's more...}
+
+如果我们将表的类型从\texttt{std::map}换成\texttt{std::unordered\_map}，程序照样能工作。这样的话，当不同类型的表具有较好的性能特性时，我们就可以快速的进行切换。例子中，唯一可观察到的区别是，亿万富翁表不再按字母顺序打印，因为哈希表和搜索树不同，其不会对对象进行排序。
+
+
+% --- recipe 6: chapter2-6-chinese.md ---
+\section{了解std::map::insert新的插入提示语义}
+
+\texttt{std::map}中查找元素的时间复杂度为O(log(n))，与插入元素的时间复杂相同，因为要在对应位置上插入元素，那么就先要找到这个位置。通常，插入M个新元素的时间复杂度为O(M*log(n))。
+
+为了让插入更加高效，\texttt{std::map}插入函数接受一个迭代器参数\texttt{hint}。自C++11起，该参数为指向将插入新元素到其前的位置的迭代器。如果这个迭代器给定正确，那么插入的时间复杂度就为O(1)。
+
+\mySmallsection{How to do it...}
+
+本节会是用传入迭代器的方式向\texttt{std::map}实例中插入多个新元素，从而减少耗时：
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <map>
+#include <string>
+\end{codebox}
+
+\item 创建一个\texttt{map}实例，并填充一些内容。
+
+\begin{codebox}[cpp]
+int main()
+{
+    std::map<std::string, size_t> m { {"b", 1}, {"c", 2}, {"d", 3} };
+\end{codebox}
+
+\item 我们将插入多个元素，对于每次插入，我们都会传入一个hint迭代器。第一次插入我们不指定其开始位置，只将插入位置指向\texttt{map}的\texttt{end}迭代器之前。
+
+\begin{codebox}[cpp]
+auto insert_it (std::end(m));
+\end{codebox}
+
+\item 我们将以字母表的反序进行元素的插入，然后使用hint迭代器，然后使用\texttt{insert}函数的返回值重新初始化迭代器的值。下一个元素将在\texttt{hint}迭代器前插入。
+
+\begin{codebox}[cpp]
+for (const auto &s : {"z", "y", "x", "w"}) {
+    insert_it = m.insert(insert_it, {s, 1});
+}
+\end{codebox}
+
+\item 为了展示在什么情况下\texttt{insert}函数不工作，我们将要插入最左侧位置的元素插入到最右侧。
+
+\begin{codebox}[cpp]
+m.insert(std::end(m), {"a", 1});
+\end{codebox}
+
+\item 最后我们打印当前的\texttt{map}。
+
+\begin{codebox}[cpp]
+    for (const auto & [key, value] : m) {
+        std::cout << "\"" << key << "\": " << value << ", ";
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 编译运行程序，错误的插入并没有对结果又什么影响，\texttt{map}实例中对象的顺序仍然是对的。
+
+\begin{codebox}[text]
+"a": 1, "b": 1, "c": 2, "d": 3, "w": 1, "x": 1, "y": 1, "z": 1,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本例与常用的方式不同，多了一个迭代器。并且我们提到了这个迭代器的正确与否。
+
+正确的迭代器将会指向一个已存在的元素，其值要比要插入元素的键大，所以新元素会插在这个迭代器之前。如果用户提供的迭代器位置有误，那么插入函数会退化成未优化的版本，其时间复杂度恢复O(log(n))。
+
+对于第一次插入，我们选择了\texttt{map}实例的\texttt{end}迭代器，因为没有其他更好的选择。在插入“z”之后，函数会返回相应的迭代器，这样我们就知道了要插入“y”的位置。“x”也同理，后面的元素依次类推。
+
+\begin{myInfoBox}
+Note: 在C++11之前，hint迭代器只是建议作为搜索开始位置的迭代器。
+\end{myInfoBox}
+
+\mySmallsection{There's more...}
+
+其中，比较有趣的事情是，在给定错误的迭代器，\texttt{map}实例依旧能保持其排序。那么他是如何工作的呢？还有插入的时间复杂度为O(1)意味着什么？
+
+\texttt{std::map}通常使用二叉搜索树实现。当在搜索树中插入一个新键时，该键要和其他键进行比较，从末端到顶端。如果键小于或大于其他节点的键，搜索树的左侧或右侧分支则会成为更深的节点。不过，搜索算法会阻止节点达到当前搜索树的底端。否则会打破搜索树的平衡，所以为了保证正确性，需要使用一个平衡算法用来管理节点。
+
+当我们将元素插入到树中时，这些键值就会成为邻居(就如整数1和2互邻一样)。如果有\texttt{hint}传入，那么很容易检查键是否正确。如果这种情况出现，则可以省去搜索的时间。而后，平衡算法会可能还要运行。虽然优化并不是总能成功，不过平均下来，性能上还是会有提升。可以使用多次插入的方式，来统计运行的耗时，这被称之为\href{http://programming.guide/amortized-time-complexity-analysis.html}{\textbf{摊销复杂度}}。
+
+\myGraphic{0.9}{images/chapter2/2-6-1.png}{}
+
+如果插入的\texttt{hint}是错的，那么插入函数会放弃使用\texttt{hint}，转而使用搜索算法进行查找。虽然程序不会出什么问题，但这样做会让程序变慢。
+
+
+% --- recipe 7: chapter2-7-chinese.md ---
+\section{高效的修改std::map元素的键值}
+
+在\texttt{std::map}数据结构中，键-值通常都对应存在，而且键通常是唯一并排序过的，而且键值一旦设定那么就不允许用户再进行修改。为了阻止用户修改键，键的类型声明使用了\texttt{const}。
+
+这种限制是非常明智的，其可以保证用户很难在使用\texttt{std::map}的时候出错。不过，如果我们真的需要修改\texttt{map}的键值该怎么办呢？
+
+C++17之前，因为对应的键已经存在，我们不得不将整个键-值对从树中移除，然后再插入。这种方法的确定很明显，其需要分配出一些不必要的内存，感觉上也会对性能有一定的影响。
+
+从C++17起，我们无需重新分配内存，就可以删除和重新插入map键值对。下面的内容中将会展示如何操作。
+
+\mySmallsection{How to do it...}
+
+我们使用\texttt{std::map}类型一个实现应用，用于确定车手在虚拟比赛中的排位。当车手在比赛中完成超越，那么我们将使用C++17的新方法改变其键值。
+
+\begin{enumerate}
+\item 包含必要的头文件和声明使用的命名空间。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <map>
+using namespace std;
+\end{codebox}
+
+\item 我们会在修改map的时候打印之前和之后结果，所以这里先实现了一个辅助函数。
+
+\begin{codebox}[cpp]
+template <typename M>
+void print(const M &m)
+{
+    cout << "Race placement:\n";
+    for (const auto &[placement, driver] : m) {
+        cout << placement << ": " << driver << '\n';
+    }
+}
+\end{codebox}
+
+\item 主函数中，我们实例化并初始化一个\texttt{map}，其键为整型，表示是当前的排位；值为字符型，表示驾驶员的姓名。我们在这里先打印一下这个\texttt{map}，因为我们会在下一步对其进行修改。
+
+\begin{codebox}[cpp]
+int main()
+{
+    map<int, string> race_placement {
+        {1, "Mario"}, {2, "Luigi"}, {3, "Bowser"},
+        {4, "Peach"}, {5, "Yoshi"}, {6, "Koopa"},
+        {7, "Toad"}, {8, "Donkey Kong Jr."}
+    };
+    print(race_placement);
+\end{codebox}
+
+\item 让我来看下排位赛的某一圈的情况，Bowser因为赛车事故排在最后，Donkey Kong Jr. 从最后一名超到第三位。例子中首先要从\texttt{map}中提取节点，因为这是唯一能修改键值的方法。\texttt{extract}函数是C++17新加的特性。其可以从\texttt{map}中删除元素，并没有内存重分配的副作用。看下这里是怎么用的吧。
+
+\begin{codebox}[cpp]
+{
+    auto a(race_placement.extract(3));
+    auto b(race_placement.extract(8)); 
+\end{codebox}
+
+\item 现在我们要交换Bowser和Donkey Kong Jr.的键。键通常都是无法修改的，不过我们可以通过\texttt{extract}方法来修改元素的键。
+
+\begin{codebox}[cpp]
+    swap(a.key(), b.key());
+\end{codebox}
+
+\item \texttt{std::map}的\texttt{insert}函数在C++17中有一个新的重载版本，其接受已经提取出来的节点，就是为了在插入他们时，不会分配不必要的内存。
+
+\begin{codebox}[cpp]
+    race_placement.insert(move(a));
+    race_placement.insert(move(b));
+}
+\end{codebox}
+
+\item 最后，我们打印一下目前的排位。
+
+\begin{codebox}[cpp]
+    print(race_placement);
+}
+\end{codebox}
+
+\item 编译并运行可以得到如下输出。我们可以看到初始的排位和最后的排位。
+
+\begin{codebox}[cpp]
+$ ./mapnode_key_modification
+Race placement:
+1: Mario
+2: Luigi
+3: Bowser
+4: Peach
+5: Yoshi
+6: Koopa
+7: Toad
+8: Donkey Kong Jr.
+Race placement:
+1: Mario
+2: Luigi
+3: Donkey Kong Jr.
+4: Peach
+5: Yoshi
+6: Koopa
+7: Toad
+8: Bowser
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+在C++17中，\texttt{std::map}有一个新成员函数\texttt{extract}。其有两种形式：
+
+\begin{codebox}[cpp]
+node_type extract(const_iterator position);
+node_type extract(const key_type& x)
+\end{codebox}
+
+在例子中，我们使用了第二个，能接受一个键值，然后找到这个键值，并提取对应的\texttt{map}节点。第一个函数接受一个迭代器，提取的速度会更快，应为给定了迭代器就不需要在查找。
+
+当使用第二种方式去提取一个不存在的节点时，会返回一个空\texttt{node\_type}实例。\texttt{empty()}成员函数会返回一个布尔值，用来表明\texttt{node\_type}实例是否为空。以任何方式访问一个空的实例都会产生未定义行为。
+
+提取节点之后，我们要使用\texttt{key()}函数获取要修改的键，这个函数会返回一个非常量的键。
+
+需要注意的是，要将节点重新插会到\texttt{map}时，我们需要在\texttt{insert}中移动他们。因为\texttt{extract}可避免不必要的拷贝和内存分配。还有一点就是，移动一个\texttt{node\_type}时，其不会让容器的任何值发生移动。
+
+\mySmallsection{There's more...}
+
+使用\texttt{extract}方法提取的\texttt{map}节点实际上非常通用。我们可以从一个\texttt{map}实例中提取出来节点，然后插入到另一个\texttt{map}中，甚至可以插入到\texttt{multimap}实例中。这种方式在\texttt{unordered\_map}和\texttt{unordered\_multimap}实例中也适用。同样在\texttt{set/multiset}和\texttt{unordered\_set/unordered\_multiset}也适用。
+
+为了在不同\texttt{map}或\texttt{set}结构中移动元素，键、值和分配器的类型都必须相同。需要注意的是，不能将\texttt{map}中的节点移动到\texttt{unordered\_map}中，或是将\texttt{set}中的元素移动到\texttt{unordered\_set}中。
+
+
+% --- recipe 8: chapter2-8-chinese.md ---
+\section{std::unordered\_map中使用自定义类型}
+
+当我们使用\texttt{std::unordered\_map}代替\texttt{std::map}时，对于键的选择要从另一个角度出发。\texttt{std::map}要求键的类型可以排序。因此，元素可以进行排序。不过，当我们使用数学中的向量作为键呢？这样一来就没有判断哪个向量大于另一个向量，比如向量(0, 1)和(1, 0)无法相比较，因为它们指向的方向不同。在\texttt{std::unordered\_map}中这都不是问题，因为不需要对键的哈希值进行排序。对于我们来说只要为类型实现一个哈希函数和等同\texttt{==}操作符的实现，等同操作符的是实现是为了判断两个对象是否完全相同。本节中，我们就来实验一下这个例子。
+
+\mySmallsection{How to do it...}
+
+本节中，我们要定义一个简单的\texttt{coord}数据结构，其没有默认哈希函数，所以我们必须要自行定义一个。然后我们会使用\texttt{coord}对象来对应一些值。
+
+\begin{enumerate}
+\item 包含使用\texttt{std::unordered\_map}所必须的头文件
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <unordered_map> 
+\end{codebox}
+
+\item 自定义数据结构，这是一个简单的数据结构，还不具备对应的哈希函数：
+
+\begin{codebox}[cpp]
+struct coord {
+    int x;
+    int y;
+};
+\end{codebox}
+
+\item 实现哈希函数是为了能让类型作为键存在，这里先实现比较操作函数：
+
+\begin{codebox}[cpp]
+bool operator==(const coord &l, const coord &r)
+{
+    return l.x == r.x && l.y == r.y;
+}
+\end{codebox}
+
+\item 为了使用STL哈希的能力，我们打开了std命名空间，并且创建了一个特化的\texttt{std::hash}模板。其使用\texttt{using}将特化类型进行别名。
+
+\begin{codebox}[cpp]
+namespace std
+{
+template <>
+struct hash<coord>
+{
+    using argument_type = coord;
+    using result_type = size_t;
+\end{codebox}
+
+\item 下面要重载该类型的括号表达式。我们只是为\texttt{coord}结构体添加数字，这是一个不太理想的哈希方式，不过这里只是展示如何去实现这个函数。一个好的散列函数会尽可能的将值均匀的分布在整个取值范围内，以减少哈希碰撞。
+
+\begin{codebox}[cpp]
+    result_type operator()(const argument_type &c) const
+    {
+        return static_cast<result_type>(c.x)
+               + static_cast<result_type>(c.y);
+    }
+};
+}
+\end{codebox}
+
+\item 我们现在可以创建一个新的\texttt{std::unordered\_map}实例，其能结构\texttt{coord}结构体作为键，并且对应任意值。例子中对\texttt{std::unordered\_map}使用自定义的类型来说，已经很不错了。让我们基于哈希进行实例化，并填充自定义类型的\texttt{map}表，并打印这个\texttt{map}表：
+
+\begin{codebox}[cpp]
+int main()
+{
+    std::unordered_map<coord, int> m { 
+        { {0, 0}, 1}, 
+        { {0, 1}, 2},
+        { {2, 1}, 3}
+    };
+    for (const auto & [key, value] : m) {
+        std::cout << "{(" << key.x << ", " << key.y
+                 << "): " << value << "} ";
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 编译运行这个例子，就能看到如下的打印信息：
+
+\begin{codebox}[text]
+$ ./custom_type_unordered_map
+{(2, 1): 3} {(0, 1): 2} {(0, 0): 1}
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+通常实例化一个基于哈希的map表(比如: \texttt{std::unordered\_map})时，我们会这样写：
+
+\begin{codebox}[cpp]
+std::unordered_map<key_type, value_type> my_unordered_map;
+\end{codebox}
+
+编译器为我们创建特化的\texttt{std::unordered\_map}时，这句话背后隐藏了大量的操作。所以，让我们来看一下其完整的模板类型声明：
+
+\begin{codebox}[cpp]
+template<
+    class Key,
+    class T,
+    class Hash = std::hash<Key>,
+    class KeyEqual = std::equal_to<Key>,
+    class Allocator = std::allocator< std::pair<const Key, T> >
+> class unordered_map;
+\end{codebox}
+
+这里第一个和第二个模板类型，我么填写的是\texttt{coord}和\texttt{int}。另外的三个模板类型是选填的，其会使用已有的标准模板类。这里前两个参数需要我们给定对应的类型。
+
+对于这个例子，\texttt{class Hash}模板参数是最有趣的一个：当我们不显式定义任何东西时，其就指向\texttt{std::hash<key\_type>}。STL已经具有\texttt{std::hash}的多种特化类型，比如\texttt{std::hash<std::string>}、\texttt{std::hash<int>}、\texttt{std::hash<unique\_ptr>}等等。这些类型中可以选择最优的一种类型类解决对应的问题。
+
+不过，STL不知道如何计算我们自定义类型\texttt{coord}的哈希值。所以我们要使用我们定义的类型对哈希模板进行特化。编译器会从\texttt{std::hash}特化列表中，找到我们所实现的类型，也就是将自定义类型作为键的类型。
+
+如果新特化一个\texttt{std::hash<coord>}类型，并且将其命名成my\_hash\_type，我们可以使用下面的语句来实例化这个类型：
+
+\begin{codebox}[cpp]
+std::unordered_map<coord, value_type, my_hash_type> my_unordered_map;
+\end{codebox}
+
+这样命名就很直观，可读性好，而且编译器也能从哈希实现列表中找到与之对应的正确的类型。
+
+
+% --- recipe 9: chapter2-9-chinese.md ---
+\section{过滤用户的重复输入，并以字母序将重复信息打印出——std::set}
+
+\texttt{std::set}是一个奇怪的容器：工作原理和\texttt{std::map}很像，不过\texttt{std::set}将键作为值，没有键值对。所以没做办法与其他类型的数据进行映射。表面上看，\texttt{std::set}因为没有太多的例子，导致很多开发者几乎不知道有这样的容器。想要使用类似\texttt{std::set}的功能时，只有自己去实现一遍。
+
+本节展示如何使用\texttt{std::set}收集很多不同的元素，过滤这些元素，最后只输出一个元素。
+
+\mySmallsection{How to do it...}
+
+从标准输入流中读取单词，所有不重复的单词将放到一个\texttt{std::set}实例中。之后，枚举出所有输入流中不重复的单词。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <set>
+#include <string>
+#include <iterator>
+\end{codebox}
+
+\item 为了分析我们的输入，会使用到\texttt{std}命名空间：
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 现在来实现主函数，先来实例化一个\texttt{std::set}。
+
+\begin{codebox}[cpp]
+int main()
+{
+    set<string> s;
+\end{codebox}
+
+\item 下一件事情就是获取用户的输入。我们只从标准输入中读取，这样我们就要用到\texttt{istream\_iterator}。
+
+\begin{codebox}[cpp]
+istream_iterator<string> it {cin};
+istream_iterator<string> end;
+\end{codebox}
+
+\item 这样就得到了一对\texttt{begin}和\texttt{end}迭代器，可以用来表示用户的输入，我们可以使用\texttt{std::inserter}来填满\texttt{set}实例。
+
+\begin{codebox}[cpp]
+    copy(it, end, inserter(s, s.end()));
+\end{codebox}
+
+\item 这样就完成了填充。为了看到从标准输入获得的不重复单词，我们可以打印当前的\texttt{set}实例。
+
+\begin{codebox}[cpp]
+    for (const auto word : s) {
+        cout << word << ", ";
+    }
+    cout << '\n';
+}
+\end{codebox}
+
+\item 最后，让我们编译并运行这个程序。从之前的输入中，重复的单词都会去除，获得不重复的单词，然后以字母序排序输出。
+
+\begin{codebox}[text]
+$ echo "a a a b c foo bar foobar foo bar bar" | ./program
+a, b, bar, c, foo, foobar,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+程序中有两个有趣的部分。第一个是使用了\texttt{std::istream\_iterator}来访问用户输入，另一个是将\texttt{std::set}实例使用\texttt{std::inserter}用包装后，在使用\texttt{std::copy}填充。这看起来像是变魔术一样，只需要一行代码，我们就能完成使用输入流填充实例，去除重复的单词和以字母序进行排序。
+
+\textbf{std::istream\_iterator}
+
+这个例子的有趣之处在于一次性可以处理流中大量相同类型的数据：我们对整个输入进行逐字的分析，并以\texttt{std::string}实例的方式插入\texttt{set}。
+
+\texttt{std::istream\_iterator}只传入了一个模板参数。也就我们输入数据的类型。我们选择\texttt{std::string}是因为我们假设是文本输入，不过这里也可以是\texttt{float}型的输入。基本上任何类型都可以使用\texttt{cin >> var;}完成。构造函数接受一个\texttt{istream}实例。标准输入使用全局输入流\texttt{std::cin}表示，例子中其为\texttt{istream}的参数。
+
+\begin{codebox}[cpp]
+istream_iterator<string> it {cin};
+\end{codebox}
+
+输入流迭代器\texttt{it}就已经实例化完毕了，其可以做两件事情：当对其解引用(\texttt{*it})时，会得到当前输入的符号。我们通过输入迭代器构造\texttt{std::string}实例，每个字符串容器中都包含一个单词；当进行自加\texttt{++it}时，其会跳转到下一个单词，然后再解引用访问下一个单词。
+
+不过，每次自加后的解引用时都须谨慎。当标准输入为空，迭代器就不能再解引用。另外，我们需要终止使用解引用获取单词的循环。终止的条件就是通过和\texttt{end}迭代器进行比较，知道何时迭代器无法解引用。如果\texttt{it==end}成立，那么说明输入流已经读取完毕。
+
+我们在创建\texttt{it}的同时，也创建了一个\texttt{std::istream\_iterator}的\texttt{end}迭代器。其目的是于\texttt{it}进行比较，在每次迭代中作为中止条件。
+
+当\texttt{std::cin}结束时，\texttt{it}迭代器将会与\texttt{end}进行比较，并返回true。
+
+\textbf{std::inserter}
+
+调用\texttt{std::copy}时，我们使用\texttt{it}和\texttt{end}作为输入迭代器。第三个参数必须是一个输出迭代器。因此，不能使用\texttt{s.begin()}或\texttt{s.end()}。一个空的\texttt{set}中，这二者是一致的，所以不能对\texttt{set}的迭代器进行解引用(无论是读取或赋值)。
+
+这就使\texttt{std::inserter}有了用武之地。其为一个函数，返回一个\texttt{std::insert\_iterator}，返回值的行为类似一个迭代器，不过会完成普通迭代器无法完成的事。当对其使用加法时，其不会做任何事。当我们对其解引用，并赋值给它时，它会连接相关容器，并且将赋值作为一个新元素插入容器中。
+
+当通过\texttt{std::inserter}实例化\texttt{std::insert\_iterator}时，我们需要两个参数：
+
+\begin{codebox}[cpp]
+auto insert_it = inserter(s, s.end());
+\end{codebox}
+
+其中s是我们的\texttt{set}，\texttt{s.end()}是指向新元素插入点的迭代器。对于一个空\texttt{set}来说，从哪里开始和从哪里结束一样重要。当使用其他数据结构时，比如\texttt{vector}和\texttt{list}，第二个参数对于定义插入新项的位置来说至关重要。
+
+\textbf{将二者结合}
+
+最后，所有的工作都在\texttt{std::copy}的调用中完成：
+
+\begin{codebox}[cpp]
+copy(input_iterator_begin, input_iterator_end, insert_iterator);
+\end{codebox}
+
+这个调用从\texttt{std::cin}中获取输入迭代器，并将其推入\texttt{std::set}中。之后，其会让迭代器自增，并且确定输入迭代器是否达到末尾。如果不是，那么可以继续从标准输入中获取单词。
+
+重复的单词会自动去除。当\texttt{set}已经拥有了一个单词，再重复将这个单词添加入\texttt{set}时，不会产生任何效果。与\texttt{std::multiset}的表现不同，\texttt{std::multiset}会接受重复项。
+
+
+% --- recipe 10: chapter2-10-chinese.md ---
+\section{实现简单的逆波兰表示法计算器——std::stack}
+
+\texttt{std::stack}是一个适配类，其能让用户使用自己定义的类型作为栈中的元素。本节中，我们会使用\texttt{std::stack}构造一个逆波兰(RPN，reverse polish notation)计算器，为了展示如何使用\texttt{std::stack}。
+
+RPN是一种记号法，可以用一种非常简单的解析方式来表达数学表达式。在RPN中，\texttt{1+2}解析为\texttt{1 2 +}。操作数优先，然后是操作符。另一个例子：\texttt{(1+2)*3}表示为\texttt{1 2 + 3 * }。这两个例子已经展示了RPN可以很容易的进行解析，并且不需要小括号来定义子表达式。
+
+\myGraphic{0.9}{images/chapter2/2-10-1.png}{}
+
+\mySmallsection{How to do it...}
+
+本节中，我们将从标准输入中读取一个RPN表达式，然后根据表达式解析出正确的计算顺序，并得到结果。最后，我们将输出得到的结果。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <stack>
+#include <iterator>
+#include <map>
+#include <sstream>
+#include <cassert>
+#include <vector>
+#include <stdexcept>
+#include <cmath>
+\end{codebox}
+
+\item 声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 然后，就来实现我们的RPN解析器。其能接受一对迭代器，两个迭代器分别指定了数学表达式的开始和结尾。
+
+\begin{codebox}[cpp]
+template <typename IT>
+double evaluate_rpn(IT it, IT end)
+{
+\end{codebox}
+
+\item 在遍历输入时，需要记住所经过的所有操作数，直到我们看到一个操作符为止。这也就是使用栈的原因。所有数字将会被解析出来，然后以双精度浮点类型进行保存，所以保存到栈中的数据类型为\texttt{double}。
+
+\begin{codebox}[cpp]
+    stack<double> val_stack;
+\end{codebox}
+
+\item 为了能更方便的访问栈中的元素，我们实现了一个辅助函数。其会修改栈中内容，弹出最顶端的元素，并返回这个元素。
+
+\begin{codebox}[cpp]
+auto pop_stack ([&](){
+    auto r (val_stack.top());
+    val_stack.pop();
+    return r;
+});
+\end{codebox}
+
+\item 另一项准备工作，就是定义所支持的数学操作符。我们使用\texttt{map}保存相关数学操作符的作用。每个操作符的实现我们使用Lambda函数实现。
+
+\begin{codebox}[cpp]
+map<string, double (*)(double, double)> ops {
+    {"+", [](double a, double b) { return a + b; }},
+    {"-", [](double a, double b) { return a - b; }},
+    {"*", [](double a, double b) { return a * b; }},
+    {"/", [](double a, double b) { return a / b; }},
+    {"^", [](double a, double b) { return pow(a, b); }},
+    {"%", [](double a, double b) { return fmod(a, b); }},
+};
+\end{codebox}
+
+\item 现在就可以对输入进行遍历了。假设我们的输入是字符串，我们使用全新的\texttt{std::stringstream}获取每个单词，这样就可以将操作数解析为数字了。
+
+\begin{codebox}[cpp]
+for (; it != end; ++it) {
+    stringstream ss {*it};
+\end{codebox}
+
+\item 我们获得的每个操作数，都要转换成\texttt{double}类型。如果当前解析的字符是操作数，那么我们将转换类型后，推入栈中。
+
+\begin{codebox}[cpp]
+if (double val; ss >> val) {
+    val_stack.push(val);
+}
+\end{codebox}
+
+\item 如果不是操作数，那么就必定为一个操作符。我们支持的操作符都是二元的，所以当遇到操作符时，我们需要从栈中弹出两个操作数。
+
+\begin{codebox}[cpp]
+else {
+    const auto r {pop_stack()};
+    const auto l {pop_stack()};
+\end{codebox}
+
+\item 现在我们可以从解引用迭代器\texttt{it}获取操作数。通过查询ops\texttt{map}表，我们可以获得参与Lambda计算的l和r值。
+
+\begin{codebox}[cpp]
+try {
+    const auto & op (ops.at(*it));
+    const double result {op(l, r)};
+    val_stack.push(result);
+}
+\end{codebox}
+
+\item 我们使用\texttt{try}代码块将计算代码包围，因为我们的计算可能会出错。在调用\texttt{map}的成员函数\texttt{at}时，可能会抛出一个\texttt{out\_of\_range}异常，由于用户具体会输入什么样的表达式，并不是我们能控制的。所以，我们将会重新抛出一个不同的异常，我们称之为\texttt{invalid argument}异常，并且携带着程序未知的操作符。
+
+\begin{codebox}[cpp]
+catch (const out_of_range &) {
+    throw invalid_argument(*it);
+}
+\end{codebox}
+
+\item 这就是遍历循环的全部，我们会将栈中的操作数用完，然后得到对应的结果，并将结果保存在栈顶。所以我们要返回栈顶的元素。(我们对栈的大小进行断言，如果大小不是1，那么就有缺失的操作符)
+
+\begin{codebox}[cpp]
+        }
+    }
+    return val_stack.top();
+}
+\end{codebox}
+
+\item 现在我们可以使用这个RPN解析器了。为了使用这个解析器，我们需要将标准输入包装成一个\texttt{std::istream\_iterator}迭代器对，并且传入RPN解析器函数。最后，我们将输出结果：
+
+\begin{codebox}[cpp]
+int main()
+{
+    try {
+        cout << evaluate_rpn(istream_iterator<string>{cin}, {})
+             << '\n';
+    }
+\end{codebox}
+
+\item 这里我们再次使用了\texttt{try}代码块，因为用户输入的表达式可能会存在错误，所以当解析器抛出异常时，需要在这里获取。我们需要获取对应的异常，并且打印出一条错误信息：
+
+\begin{codebox}[cpp]
+    catch (const invalid_argument &e) {
+        cout << "Invalid operator: " << e.what() << '\n';
+    }
+}   
+\end{codebox}
+
+\item 完成编译步骤后，我们就可以使用这个解析器了。输入\texttt{3 1 2 + * 2 /}，其为\texttt{(3*(1+2))/2}数学表达式的RPN表达式，然后我们获得相应的结果：
+
+\begin{codebox}[cpp]
+$ echo "3 1 2 + * 2 /" | ./rpn_calculator
+4.5
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+整个例子通过解析我们的输入，持续向栈中压入操作数的方式完成相应的数学计算。本例中，我们会从栈中弹出最后两个操作数，然后使用操作符对这两个操作数进行计算，然后将其结果保存在栈中。为了理解本节中的所有代码，最重要的就是要理解，我们如何区分了输入中的操作数和操作符，如何管理我们的栈，以及如何选择正确的计算操作符。
+
+\textbf{栈管理}
+
+我们使用\texttt{std::stack}中的成员函数\texttt{push}将元素推入栈中：
+
+\begin{codebox}[cpp]
+val_stack.push(val);
+\end{codebox}
+
+出站元素的获取看起来有些复杂，因为我们使用了一个Lambda表达式完成这项操作，其能够引用\texttt{val\_stack}对象。这里我们为代码添加了一些注释，可能会更好理解一些：
+
+\begin{codebox}[cpp]
+auto pop_stack ([&](){
+    auto r (val_stack.top()); // 获取栈顶元素副本
+    val_stack.pop(); // 从栈中移除顶部元素
+    return r; // 返回顶部元素副本
+});
+\end{codebox}
+
+这个Lambda表达式能够一键式获取栈顶元素，并且能删除顶部元素。在\texttt{std::stack}的设计当中，无法使用一步完成这些操作。不过，定义一个Lambda函数也是十分快捷和简介，所以我们可以使用这种方式获取值：
+
+\begin{codebox}[cpp]
+double top_value {pop_stack()};
+\end{codebox}
+
+\textbf{从输入中区别操作数和操作符}
+
+主循环中执行\texttt{evaluate\_rpn}时，我们会根据迭代器遍历标准输入，然后判断字符是一个操作数，还是一个操作符。如果字符可以被解析成\texttt{double}变量，那这就是一个数，也就是操作数。我们需要考虑有些比较难以解析的数值(比如，+1和-1)，这种数值可能会被解析成操作符(尤其是+1这种)。
+
+用于区分操作数和操作符的代码如下所示：
+
+\begin{codebox}[cpp]
+stringstream ss {*it};
+if (double val; ss >> val) {
+    // It's a number!
+} else {
+    // It's something else than a number - an operation!
+}
+\end{codebox}
+
+如果字符是一个数字，流操作符\texttt{>>}会告诉我们。首先，我们将字符串包装成一个\texttt{std::stringstream}。然后使用\texttt{stringstream}对象的能力，将流中\texttt{std::string}类型解析并转换成一个\texttt{double}变量。解析失败时也能知道是为什么，因为只解析器需要解析数字出来；否则，需要解析的就不是一个数字。
+
+\textbf{选择和应用正确的数学操作符}
+
+判断完当前用户的输入是否为一个数后，我们先假设输入了一个操作符，比如\texttt{+}或\texttt{*}。然后，查询\texttt{map}表ops，找到对应的操作，并返回相应的函数，其函数可以接受两个操作数，然后返回对应操作后的结果。
+
+\texttt{map}表本身的类型看起来会相对复杂：
+
+\begin{codebox}[cpp]
+map<string, double (*)(double, double)> ops { ... };
+\end{codebox}
+
+其将\texttt{string}映射到\texttt{ double (*)(double, double)}。后者是什么意思呢？这个类型是一个函数指针的声明，说明这个函数接受两个double类型的变量作为输入，并且返回值也是\texttt{double}类型。可以将\texttt{(*)}部分理解成函数的名字，例如\texttt{ double sum(double, double}，这样就好理解多了吧。这里的重点在于我们的Lambda函数\texttt{[](double, double) \{return /* some double */ \} }，其可转换为实际匹配指针声明的函数。这里Lambda不获取任何东西，所以可以转化为函数指针。
+
+这样，我们就可以方便的在\texttt{map}表中查询操作符是否支持：
+
+\begin{codebox}[cpp]
+const auto & op (ops.at(*it));
+const double result {op(l, r)};
+\end{codebox}
+
+\texttt{map}会为我们隐式的做另一件事：当我们执行\texttt{ ops.at("foo") }时，如果\texttt{"foo"}是一个合法键(实际中我们不会用这个名字存任何操作)，那么在这个例子中，\texttt{map}表将会抛出一个异常，例子中可以捕获这个异常。当我们捕获这个异常时，我们会重新抛出一个不同的异常，为了描述我们遇到了什么样的错误。相较于\texttt{out of range}，用户也能更好的了解\texttt{invalid argument}异常的含义，因此我们在使用的时候，程序的\texttt{map}表到底支持哪些操作，我们是不知道的。
+
+\mySmallsection{There's more...}
+
+\texttt{evaluate\_rpn}函数可以传入迭代器，感觉这样传递的方式要比传入标准输入更加容易理解。这让程序更容易测试，或适应来自于用户的不同类型的输入。
+
+使用字符串流或字符串数组的迭代器作为输入，例如下面的代码，\texttt{evaluate\_rpn}不用做任何修改：
+
+\begin{codebox}[cpp]
+int main()
+{
+    stringstream s {"3 2 1 + * 2 /"};
+    cout << evaluate_rpn(istream_iterator<string>{s}, {}) << '\n';
+    vector<string> v {"3", "2", "1", "+", "*", "2", "/"};
+    cout << evaluate_rpn(begin(v), end(v)) << '\n';
+}
+\end{codebox}
+
+\begin{myInfoBox}
+Note: 在有意义的地方使用迭代器，会使得代码可重复利用度高，模块化好。
+\end{myInfoBox}
+
+
+% --- recipe 11: chapter2-11-chinese.md ---
+\section{实现词频计数器——std::map}
+
+\texttt{std::map}在收集和统计数据方面非常有用，通过建立键值关系，将可修改的对象映射到对应键上，可以很容易的实现一个词频计数器。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将从标准输入中获取用户的输入，或是从记录一部小说的文本文件。我们会去标记输入单词，并统计一共有多少个单词。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <map>
+#include <vector>
+#include <algorithm>
+#include <iomanip>
+\end{codebox}
+
+\item 声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 我们将使用一个辅助函数，对输入中的符号进行处理。
+
+\begin{codebox}[cpp]
+string filter_punctuation(const string &s)
+{
+    const char *forbidden {".,:; "};
+    const auto idx_start (s.find_first_not_of(forbidden));
+    const auto idx_end (s.find_last_not_of(forbidden));
+    return s.substr(idx_start, idx_end - idx_start + 1);
+}
+\end{codebox}
+
+\item 现在，我们来实现真正要工作的部分。使用\texttt{map}表对输入的每个单词进行统计。另外，使用一个变量来保存目前为止看到的最长单词的长度。程序的最后，我们将打印这个\texttt{map}表。
+
+\begin{codebox}[cpp]
+int main()
+{
+    map<string, size_t> words;
+    int max_word_len {0};
+\end{codebox}
+
+\item 将标准输入导入\texttt{std::string}变量中，标准输入由空格隔开。通过如下方法获取输入单词。
+
+\begin{codebox}[cpp]
+string s;
+while (cin >> s) {
+\end{codebox}
+
+\item 我们获得的单词可能包含标点符号，因为这些符号可能紧跟在单词后面。使用辅助函数将标点符号去除。
+
+\begin{codebox}[cpp]
+        auto filtered (filter_punctuation(s));
+\end{codebox}
+
+\item 如果当前处理的单词是目前处理最长的单词，我们会更新\texttt{max\_word\_len}变量。
+
+\begin{codebox}[cpp]
+        max_word_len = max<int>(max_word_len, filtered.length());
+\end{codebox}
+
+\item 然后，我们将增加该词在\texttt{words map}中的频率。如果是首次处理该单词，那么将会隐式创建一个键值对，然后插入\texttt{map}，之后再进行自加操作。
+
+\begin{codebox}[cpp]
+    ++words[filtered];
+}   
+\end{codebox}
+
+\item 当循环结束时，\texttt{words map}会保存所有输入单词的频率。\texttt{map}中单词作为键，并且键以字母序排列。我们想要以频率多少进行排序，词频最高的排第一位。为了达到这样的效果，首先实现一个\texttt{vector}，将所有键值对放入这个\texttt{vector}中。
+
+\begin{codebox}[cpp]
+vector<pair<string, size_t>> word_counts;
+word_counts.reserve(words.size());
+move(begin(words), end(words), back_inserter(word_counts));
+\end{codebox}
+
+\item 然后，\texttt{vector}中将将具有\texttt{words map}中的所有元素。然后，我们来进行排序，把词频最高的单词排在最开始，最低的放在最后。
+
+\begin{codebox}[cpp]
+sort(begin(word_counts), end(word_counts),
+    [](const auto &a, const auto &b) {
+    return a.second > b.second;
+    });
+\end{codebox}
+
+\item 现在所有元素如我们想要的顺序排列，之后将这些数据打印在用户的终端上。使用\texttt{std::setw}流控制器，可以格式化输出相应的内容。
+
+\begin{codebox}[cpp]
+    cout << "# " << setw(max_word_len) << "<WORD>" << " #<COUNT>\n";
+    for (const auto & [word, count] : word_counts) {
+        cout << setw(max_word_len + 2) << word << " #"
+             << count << '\n';
+    }
+}
+\end{codebox}
+
+\item 编译后运行，我们就会得到一个词频表：
+
+\begin{codebox}[cpp]
+$ cat lorem_ipsum.txt | ./word_frequency_counter
+# <WORD> #<COUNT>
+et #574
+dolor #302
+sed #273
+diam #273
+sit #259
+ipsum #259
+...
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节中，我们使用\texttt{std::map}实例进行单词统计，然后将\texttt{map}中的所有元素放入\texttt{vector}中，然后进行排序，再打印输出。为什么要这么做？
+
+先看一个例子。当我们要从\texttt{a a b c b b b d c c}字符串中统计词频时，我们的\texttt{map}内容如下：
+
+\begin{codebox}[text]
+a -> 2
+b -> 4
+c -> 3
+d -> 1
+\end{codebox}
+
+不过，这是未排序的，这不是我们想要给用户展示的排序。我们的程序要首先输出b的频率，因为b的频率最高。然后是c，a，d。不幸的是，我们无法要求\texttt{map}使用键所对应的值进行排序。
+
+这就需要\texttt{vector}帮忙了，将\texttt{map}中的键值对放入\texttt{vector}中。这个方法明确的将这些元素从\texttt{map}中删除了。
+
+\begin{codebox}[cpp]
+vector<pair<string, size_t>> word_counts;
+\end{codebox}
+
+然后，我们使用\texttt{std::move}函数将词-频对应关系填充整个\texttt{vector}。这样的好处是让单词不会重复，不过这样会将元素从\texttt{map}中完全删除。使用\texttt{move}方法，减少了很多不必要的拷贝。
+
+\begin{codebox}[cpp]
+move(begin(words), end(words), back_inserter(word_counts));
+\end{codebox}
+
+\begin{myInfoBox}
+Note 一些STL的实现使用短字符优化——当所要处理的字符串过长，这种方法将无需再在堆上分配内存，并且可以将字符串直接进行存储。在这个例子中，移动虽然不是最快的方式，但也不会慢多少。
+\end{myInfoBox}
+
+接下来比较有趣的就是排序操作，其使用了一个Lambda表达式作为自定义比较谓词：
+
+\begin{codebox}[cpp]
+sort(begin(word_counts), end(word_counts),
+    [](const auto &a, const auto &b) { return a.second > b.second; });
+\end{codebox}
+
+排序算法将会成对的处理元素，比较两个元素。通过提供的Lambda函数，\texttt{sort}方法将不会再使用默认比较谓词，其会将\texttt{a.second}和\texttt{b.second}进行比较。这里的键值对中，第二个值为词频数，所以可以使用\texttt{.second}得到对应词频数。通过这种方式，将移动所有高频率的词到\texttt{vector}的开始，并且将低频率词放在末尾。
+
+
+% --- recipe 12: chapter2-12-chinese.md ---
+\section{实现写作风格助手用来查找文本中很长的句子——std::multimap}
+
+当有超级多的元素需要排序时，某些键值描述可能会出现多次，那么使用\texttt{std::multimap}完成这项工作无疑是个不错的选择。
+
+先找个应用场景：当使用德文写作时，使用很长的句子是没有问题的。不过，使用英文时，就不行了。我们将实现一个辅助工具来帮助德国作家们分析他们的英文作品，着重于所有句子的长度。为了帮助这些作家改善其写作的文本风格，工具会按句子的长度对每个句子进行分组。这样作家们就能挑出比较长的句子，然后截断这些句子。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将从标准输入中获取用户输入，用户会输入所有的句子，而非单词。然后，我们将这些句子和其长度收集在\texttt{std::multimap}中。之后，我们将对所有句子的长度进行排序，打印给用户看。
+
+\begin{enumerate}
+\item 包含必要的头文件。\texttt{std::multimap}和\texttt{std::map}在同一个头文件中声明。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <algorithm>
+\end{codebox}
+
+\item 声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 我们使用句号将输入字符串分成若干个句子，句子中的每个单词以空格隔开。句子中的一些对于句子长度无意义的符号，也会计算到长度中，所以，这里要使用辅助函数将这些符号过滤掉。
+
+\begin{codebox}[cpp]
+string filter_ws(const string &s)
+{
+    const char *ws {" \r\n\t"};
+    const auto a (s.find_first_not_of(ws));
+    const auto b (s.find_last_not_of(ws));
+    if (a == string::npos) {
+        return {};
+    }
+    return s.substr(a, b);
+}
+\end{codebox}
+
+\item 计算句子长度函数需要接收一个包含相应内容的字符串，并且返回一个\texttt{std::multimap}实例，其映射了排序后的句子长度和相应的句子。
+
+\begin{codebox}[cpp]
+multimap<size_t, string> get_sentence_stats(const string &content)
+{
+\end{codebox}
+
+\item 这里声明一个\texttt{multimap}结构，以及一些迭代器。在计算长度的循环中，我们需要\texttt{end}迭代器。然后，我们使用两个迭代器指向文本的开始和结尾。所有句子都在这个文本当中。
+
+\begin{codebox}[cpp]
+multimap<size_t, string> ret;
+const auto end_it (end(content));
+auto it1 (begin(content));
+auto it2 (find(it1, end_it, '.'));
+\end{codebox}
+
+\item \texttt{it2}总是指向句号，而\texttt{it1}指向句子的开头。只要\texttt{it1}没有到达文本的末尾就好。第二个条件就是要检查\texttt{it2}是否指向字符。如果不满足这些条件，那么就意味着这两个迭代器中没有任何字符了：
+
+\begin{codebox}[cpp]
+    while (it1 != end_it && distance(it1, it2) > 0) {   
+\end{codebox}
+
+\item 我们使用两个迭代器间的字符创建一个字符串，并且过滤字符串中所有的空格，只是为了计算句子纯单词的长度。
+
+\begin{codebox}[cpp]
+        string s {filter_ws({it1, it2})};
+\end{codebox}
+
+\item 当句子中不包含任何字符，或只有空格时，我们就不统计这句。另外，我们要计算有多少单词在句子中。这很简单，每个单词间都有空格隔开，单词的数量很容易计算。然后，我们就将句子和其长度保存在\texttt{multimap}中。
+
+\begin{codebox}[cpp]
+if (s.length() > 0) {
+    const auto words (count(begin(s), end(s), ' ') + 1);
+    ret.emplace(make_pair(words, move(s)));
+}
+\end{codebox}
+
+\item 对于下一次循环迭代，我们将会让\texttt{it1}指向\texttt{it2}的后一个字符。然后将\texttt{it2}指向下一个句号。
+
+\begin{codebox}[cpp]
+    it1 = next(it2, 1);
+    it2 = find(it1, end_it, '.');
+} 
+\end{codebox}
+
+\item 循环结束后，\texttt{multimap}包含所有句子以及他们的长度，这里我们将其返回。
+
+\begin{codebox}[cpp]
+    return ret;
+}
+\end{codebox}
+
+\item 现在，我们来写主函数。首先，我们让\texttt{std::cin}不要跳过空格，因为我们需要句子中有空格。为了读取整个文件，我们使用\texttt{std::cin}包装的输入流迭代器初始化一个\texttt{std::string}实例。
+
+\begin{codebox}[cpp]
+int main()
+{
+    cin.unsetf(ios::skipws);
+    string content {istream_iterator<char>{cin}, {}};
+\end{codebox}
+
+\item 只需要打印\texttt{multimap}的内容，在循环中调用\texttt{get\_sentence\_stats}，然后打印\texttt{multimap}中的内容。
+
+\begin{codebox}[cpp]
+    for (const auto & [word_count, sentence]
+            : get_sentence_stats(content)) {
+     cout << word_count << " words: " << sentence << ".\n";
+    }
+}
+\end{codebox}
+
+\item 编译完成后，我们可以使用一个文本文件做例子。由于长句子的输出量很长，所以先把最短的句子打印出来，最后打印最长的句子。这样，我们就能首先看到最长的句子。
+
+\begin{codebox}[text]
+$ cat lorem_ipsum.txt | ./sentence_length
+...
+10 words: Nam quam nunc, blandit vel, luctus pulvinar,
+hendrerit id, lorem.
+10 words: Sed consequat, leo eget bibendum sodales,
+augue velit cursus nunc,.
+12 words: Cum sociis natoque penatibus et magnis dis
+parturient montes, nascetur ridiculus mus.
+17 words: Maecenas tempus, tellus eget condimentum rhoncus,
+sem quam semper libero, sit amet adipiscing sem neque sed ipsum.
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+整个例子中，我们将一个很长的字符串，分割成多个短句，从而评估每个句子的长度，并且在\texttt{multimap}中进行排序。因为\texttt{std::multimap}很容易使用，所以变成较为复杂的部分就在于循环，也就是使用迭代器获取每句话的内容。
+
+\begin{codebox}[cpp]
+const auto end_it (end(content));
+
+// (1) Beginning of string
+auto it1 (begin(content)); 
+
+// (1) First '.' dot
+auto it2 (find(it1, end_it, '.')); 
+while (it1 != end_it && std::distance(it1, it2) > 0) {
+    string sentence {it1, it2};
+    // Do something with the sentence string...
+    
+    // One character past current '.' dot
+    it1 = std::next(it2, 1); 
+    
+    // Next dot, or end of string
+    it2 = find(it1, end_it, '.'); 
+}
+\end{codebox}
+
+将代码和下面的图结合起来可能会更好理解，这里使用具有三句话的字符串来举例。
+
+\myGraphic{0.9}{images/chapter2/2-12-1.png}{}
+
+\texttt{it1}和\texttt{it2}总是随着字符串向前移动。通过指向句子的开头和结尾的方式，确定一个句子中的内容。\texttt{std::find}算法会帮助我们寻找下一个句号的位置。
+
+\begin{myQuote}
+std::find的描述： 从当前位置开始，返回首先找到的目标字符迭代器。如果没有找到，返回结束迭代器。
+\end{myQuote}
+
+这样我们就获取了一个句子，然后通过构造对应字符串的方式，将句子的长度计算出来，并将长度和原始句子一起插入\texttt{multimap}中。我们使用句子的长度作为元素的键，原句作为值存储在\texttt{multimap}中。通常一个文本中，长度相同的句子有很多。这样使用\texttt{std::map}就会比较麻烦。不过\texttt{std::multimap}就没有重复键值的问题。这些键值也是排序好的，从而能得到用户们想要的输出。
+
+\mySmallsection{There's more...}
+
+将整个文件读入一个大字符串中后，遍历字符串时需要为每个句子创建副本。这是没有必要的，这里可以使用\texttt{std::string\_view}来完成这项工作，该类型我们将会放在后面来介绍。
+
+另一种从两个句号中获取句子的方法就是使用\texttt{std::regex\_iterator}(正则表达式)，我们将会在后面的章节中进行介绍。
+
+
+% --- recipe 13: chapter2-13-chinese.md ---
+\section{实现个人待办事项列表——std::priority\_queue}
+
+\texttt{std::priority\_queue}是另一种适配容器(类似于\texttt{std::stack})。其实为另一种数据结构的包装器(默认的数据结构为\texttt{std::vector})，并且提供类似队列的接口。同样也遵循队列的特性，先进先出。这与我们之前使用的\texttt{std::stack}完全不同。
+
+这里仅仅是对\texttt{std::queue}的行为进行描述，本节将展示\texttt{std::priority\_queue}是如何工作的。这个适配器比较特殊，其不仅有FIFO的特性，还混合着优先级。这就意味着，FIFO的原则会在某些条件下被打破，根据优先级的顺序形成子FIFO队列。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将创建一个待办事项的结构。为了程序的简明性就不从用户输入解析输入了。这次专注于\texttt{std::priority\_queue}的使用。所以我们使用一些待办事项和优先级填充一个优先级序列，然后以FIFO的顺序读出这些元素(这些元素是通过优先级进行过分组)。
+
+\begin{enumerate}
+\item 包含必要的头文件。\texttt{std::priority\_queue}在\texttt{<queue>}中声明。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <queue>
+#include <tuple>
+#include <string>
+\end{codebox}
+
+\item 我们怎么将待办事项存在优先级队列中呢？我们不能添加项目时，附加优先级。优先级队列将使用自然序对待队列中的所有元素。现在我们实现一个自定义的结构体\texttt{struct todo\_item}，并赋予其优先级系数，和一个字符串描述待办事件，并且为了让该结构体具有可排序性，这里会实现比较操作符\texttt{<}。另外，我们将会使用\texttt{std::pair}，其能帮助我们聚合两个类型为一个类型，并且能完成自动比较。
+
+\begin{codebox}[cpp]
+int main()
+{
+    using item_type = std::pair<int, std::string>;
+\end{codebox}
+
+\item 那么现在我们有了一个新类型\texttt{item\_type}，其由一个优先级数字和一个描述字符串构成。所以，我们可以使用这种类型实例化一个优先级队列。
+
+\begin{codebox}[cpp]
+    std::priority_queue<item_type> q;
+\end{codebox}
+
+\item 我们现在来填充优先级队列。其目的就是为了提供一个非结构化列表，之后优先级队列将告诉我们以何种顺序做什么事。比如，你有漫画要看的同时，也有作业需要去做，那么你必须先去写作业。不过，\texttt{std::priority\_queue}没有构造函数，其支持初始化列表，通过列表我们能够填充优先级队列(使用\texttt{vector}或\texttt{list}都可以对优先级队列进行初始化)。所以我们这里定义了一个列表，用于下一步的初始化。
+
+\begin{codebox}[cpp]
+std::initializer_list<item_type> il {
+    {1, "dishes"},
+    {0, "watch tv"},
+    {2, "do homework"},
+    {0, "read comics"},
+};
+\end{codebox}
+
+\item 现在我们可以很方便的遍历列表中的所有元素，然后通过\texttt{push}成员函数将元素插入优先级列表中。
+
+\begin{codebox}[cpp]
+for (const auto &p : il) {
+    q.push(p);
+}
+\end{codebox}
+
+\item 这样所有的元素就都隐式的进行了排序，并且我们可以浏览列表中优先级最高的事件。
+
+\begin{codebox}[cpp]
+    while(!q.empty()) {
+        std::cout << q.top().first << ": " << q.top().second << '\n';
+        q.pop();
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 编译运行程序。结果如我们所料，作业是最优先的，看电视和看漫画排在最后。
+
+\begin{codebox}[cpp]
+$ ./main
+2: do homework
+1: dishes
+0: watch tv
+0: read comics
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+\texttt{std::priority\_queue}使用起来很简单。我们只是用了其三个成员函数。
+
+\begin{enumerate}
+\item \texttt{q.push(item)}将元素推入队列中。
+
+\item \texttt{q.top()}返回队首元素的引用。
+
+\item \texttt{q.pop()}移除队首元素。
+
+\end{enumerate}
+
+不过，如何做到排序的呢？我们将优先级数字和描述字符串放入一个\texttt{std::pair}中，然后就自然得到排序后的结果。这里有一个\texttt{ std::pair<int, std::string>}的实例\texttt{p}，我们可通过\texttt{p.first}访问优先级整型数，使用\texttt{p.second}访问字符串。我们在循环中就是这样打印所有待办事件的。
+
+如何让优先级队列意识到\texttt{ \{2, "do homework"\}}要比\texttt{\{0, "watch tv"\}}重要呢？
+
+比较操作符\texttt{<}在这里处理了不同的元素。我们假设现在有\texttt{left < right}，两个变量的类型都是pair。
+
+\begin{enumerate}
+\item \texttt{ left.first != right.first}，然后返回\texttt{left.first < right.first}。
+
+\item \texttt{ left.first == right.first}，然后返回\texttt{left.second < right.second}。
+
+\end{enumerate}
+
+以这种方式就能满足我们的要求。最重要的就是\texttt{pair}中第一个成员，然后是第二个成员。否则，\texttt{std::priority\_queue}将会字母序将元素进行排序，而非使用数字优先级的顺序(这样的话，看电视将会成为首先要做的事情，而完成作业则是最后一件事。对于懒人来说，无疑是个完美的顺序)。
+
+

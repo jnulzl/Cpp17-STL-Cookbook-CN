@@ -1,0 +1,1866 @@
+% chapterintro
+% ==============================
+% 第7章 导言：chapter7-0-chinese.md
+本章，我们将对字符串的处理进行介绍，其中包括处理、解析和打印任意的数据。对于这样的需求，STL提供了I/O流库进行支持。这些库由以下的类组成，对应的类使用灰色框表示：
+
+\myGraphic{0.9}{images/chapter7/7-0-1.png}{}
+
+箭头的指向代表了每个类之间的继承关系。这里面类的数量还挺多，本章中，我们会逐个来熟悉。我们使用类型名称在STL的手册中进行查找时，不一定能直接找到这些类。因为图中的这些名字是对于应用开发者来说的，其中大多数类型的名称都是以\texttt{basic\_}为前缀(例如：我们能很容易的在STL文档章找到\texttt{basic\_istream}，而\texttt{istream}却很难找到)。以\texttt{basic\_}为前缀的I/O流类型为模板类，可以将其特化成不同的字符类型。图中的类型都可以以\texttt{char}类型进行特化。我们将会在本书剩下的章节中，使用以\texttt{char}为特化的版本。当我们看到类型名前面以\texttt{w}开头时(例如：\texttt{wistream}，\texttt{wostream})，将使用\texttt{wchar\_t}类型代替\texttt{basic\_istream}0类型。
+
+图的最顶端，能看到\texttt{std::ios\_base}类。我们不能直接对其进行使用，不过其他的类型都是其子类。其一种特化为\texttt{std::ios}，这个类型对象会包含流数据，其能通过\texttt{good}成员函数对流的状态进行查询，还能通过\texttt{empty}成员函数数据状态是否为(EOF)。
+
+我们经常使用的特化类有两个：\texttt{std::istream}和\texttt{std::ostream}。两个类型的前缀\texttt{i}和\texttt{o}代表着输入和输出。我们在之前的代码使用使用其\texttt{std::cout}和\texttt{std::cin}(还有\texttt{std::cerr})对象对字符串进行过输入和输出。其都是这些类型的实例，也是非常通用的。我们通过\texttt{ostream}进行数据输出，使用\texttt{istream}进行数据输入。
+
+\texttt{iostream}类则是对\texttt{istream}和\texttt{ostream}的继承，其将输入和输出的能力进行合并。当我们要对流数据进行输入和输出的时候，我们就有三个类可供使用。
+
+\texttt{ifstream}，\texttt{ofstream}和\texttt{fstream}继承于\texttt{istream}，\texttt{ostream}和\texttt{iostream}，不过为I/O流添加了文件的读入写出功能。
+
+\texttt{istringstream}, \texttt{ostringstream}和\texttt{iostringstream}原理十分类似，会将字符串读入内存中，并在内存中对数据进行处理。
+
+
+% --- recipe 1: chapter7-1-chinese.md ---
+\section{创建、连接和转换字符串}
+
+熟悉C++的“老人”们对\texttt{std::string}一定不会陌生。在处理C风格的字符串时，会感觉冗余和痛苦，特别是在于解析、连接和复制这些字符串的时候，而使用\texttt{std::string}确实一种简单的安全的方法。
+
+要特别感谢C++11添加了移动的特性，这样我们就可以对字符串的所有权进行转移。这样，很多情况下的开销就能降的很低。
+
+\texttt{std::string}也随着标准的更新添加了新的特性。C++17中添加了一个全新的类——\texttt{std::string\_view}。本节我们将在C++17下感受一下这些新特性(将在其他节中使用\texttt{std::string\_view}新类，来连接多个字符串)。
+
+\mySmallsection{How to do it...}
+
+本节，将创建几个字符串和几个字符串代理，并使用它们进行对字符串的连接和转换：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <sstream>
+#include <algorithm>
+using namespace std; 
+using namespace std::literals;
+\end{codebox}
+
+\item 首先来创建字符串对象，这里\texttt{a}就为一个\texttt{string}对象。我们使用C风格的字符串对其进行构造(编译后，C风格的字符串就成为静态数组)。构造函数将对其进行拷贝，然后构成一个字符串对象。或者也可直接使用字符字面值操作符\texttt{""s}来代替C风格的字符串。其也会在运行时创建一个字符串对象，这里\texttt{b}也是一个字符串对象，不过这里我们让程序自己去推断这个类型：
+
+\begin{codebox}[cpp]
+int main()
+{
+    string a { "a" };
+    auto b ( "b"s ); 
+\end{codebox}
+
+\item 构造字符串对象的时候，会将相应的内容拷贝到字符串的内部内存中。为了不拷贝，可以直接对输入字符串进行引用，这里就用一下\texttt{string\_view}。这个类具有一个字面值操作，称为\texttt{""sv}：
+
+\begin{codebox}[cpp]
+    string_view c { "c" };
+    auto d ( "d"sv );
+\end{codebox}
+
+\item OK！现在就让我们来用一下字符串和代理字符串吧！对于这两种类型，其\texttt{operator<<}都是对\texttt{std::ostream}类型重载的类型，所以这两种类型可以直接打印：
+
+\begin{codebox}[cpp]
+    cout << a << ", " << b << '\n';
+    cout << c << ", " << d << '\n'; 
+\end{codebox}
+
+\item 字符串类也对\texttt{operator+}操作进行了重载，所以可以直接将两个字符串进行连接。连接\texttt{a}和\texttt{b}只要使用\texttt{+}操作就能完成。对于\texttt{a}和\texttt{c}来说，就没有那么简单了，因为c不是一个字符串对象，而是一个字符串代理对象。我们必须先获取\texttt{c}的字符串，这步可以通过对\texttt{c}进行新的字符串构造得到，然后再和\texttt{a}进行相加。这里就有一个问题，“等下！只是为了和\texttt{a}相加，我们就要将\texttt{a}0的内容拷贝到临时字符串对象中吗？没有避免使用\texttt{a}1进行内容拷贝的方法吗？”这个想法很好，但是类型本身具有缺陷——\texttt{a}2实例中没有终止符。这个很可能会导致缓存溢出：
+
+\begin{codebox}[cpp]
+    cout << a + b << '\n';
+    cout << a + string{c} << '\n'; 
+\end{codebox}
+
+\item 我们来创建一个新的字符串，其包含我们之前创建的所有字符串和字符串代理。使用\texttt{std::ostringstream}，我们能将任意的变量通过流对象进行打印(类似\texttt{std::cout})，不过其不会显示在终端，而是打印到一个字符串缓存中。对于所有的字符串，我们是用空格对这些字符串进行分割，并使用\texttt{operator<<}将这些字符串打印到新的字符串对象中(使用\texttt{o.str()}):
+
+\begin{codebox}[cpp]
+ostringstream o;
+o << a << " " << b << " " << c << " " << d;
+auto concatenated (o.str());
+cout << concatenated << '\n';
+\end{codebox}
+
+\item 这时我们可以通过相应的函数，将新字符串中所有的字符转换成大写字符。这里使用C库中的\texttt{toupper}函数来完成将字母转换为大写的工作，可将其与\texttt{std::transform}相结合。因为这里字符串的基础类型为\texttt{char}，所以可以直接使用：
+
+\begin{codebox}[cpp]
+    transform(begin(concatenated), end(concatenated),
+             begin(concatenated), ::toupper);
+    cout << concatenated << '\n';
+}
+\end{codebox}
+
+\item 编译并运行程序，将会得到如下输出：
+
+\begin{codebox}[cpp]
+$ ./creating_strings
+a, b
+c, d
+ab
+ac
+a b c d
+A B C D
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+显然，字符串可以通过加法操作进行连接。如果要对\texttt{string\_view}使用这个特性，我们首先需要将其转化为\texttt{std::string}。
+
+不过，进行字符串和字符串代理编码时要格外注意，\texttt{string\_view}的内容中没有终止符！这也就是为什么我们宁愿写成\texttt{ "abc"s + string\{some\_string\_view\}}，而不写成\texttt{"abc"s + some\_string\_view.data()}的原因。除此之外，\texttt{std::string}也提供了\texttt{append}成员函数，其能对\texttt{string\_view}实例进行处理，不过其会对字符串的内容直接进行操作。
+
+\begin{myInfoBox}
+Note： \texttt{std::string\_view}是非常有用的，不过为了将其与字符串和字符串函数相混合。我们不能假设其具有终止符，其会在标准字符串环境中快速的跳出。幸运的是，通常一些函数的重载版本，可以对其进行正确的处理。
+\end{myInfoBox}
+
+如果我们想要将更为复杂的字符串进行格式化连接，不需要对字符串实例进行逐个处理。\texttt{std::stringstream}，\texttt{std::ostringstream}和\texttt{std::istringstream}类就适合来处理这种任务，它们能对通过对内存的管理来进行字符串的添加，并且能提供流所具有的所有通用格式化特性。这也就是本节为什么选择\texttt{std::ostringstream}类的原因，其可以很方便的对变量类型进行解析，然后将其放入字符串中。如果想将输入输出进行结合，那么\texttt{std::stringstream}则是一个不错的选择。
+
+
+% --- recipe 2: chapter7-2-chinese.md ---
+\section{消除字符串开始和结束处的空格}
+
+应用从用户端获取到的输入，经常会有很多不必要的空格存在。之前的章节中，将单词间多余的空格进行移除。
+
+现在让我们来看看，被空格包围的字符串应该怎么去移除多余的空格。\texttt{std::string}具有很多不错的辅助函数能完成这项工作。
+
+\begin{myInfoBox}
+Note： 这节看完后，下节也别错过。将会在下节看到我们如何使用\texttt{std::string\_view}类来避免不必要的拷贝或数据修改。
+\end{myInfoBox}
+
+\mySmallsection{How to do it...}
+
+本节，我们将完成一个辅助函数的实现，其将判断是否有多余的空格在字符串开头和结尾，并复制返回去掉这些空格的字符串，并进行简单的测试：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <cctype>
+using namespace std;
+\end{codebox}
+
+\item 函数将对一个常量字符串进行首尾空格的去除，并返回首尾没有空格的新字符串：
+
+\begin{codebox}[cpp]
+string trim_whitespace_surrounding(const string &s)
+{ 
+\end{codebox}
+
+\item \texttt{std::string}能够提供两个函数，这两个函数对我们很有帮助。第一个就是\texttt{string::find\_first\_not\_of}，其能帮助我们找到我们想要跳过的字符。本节中毫无疑问就是空格，其包括空格，制表符和换行符。函数能返回第一个非空格字符的位置。如果字符串里面只有空格，那么会返回\texttt{string::npos}。这意味着没有找到除了空格的其他字符。如果这样，我们就会返回一个空的字符串：
+
+\begin{codebox}[cpp]
+    const char whitespace[] {" \t\n"};
+    const size_t first (s.find_first_not_of(whitespace));
+    if (string::npos == first) { return {}; }
+\end{codebox}
+
+\item 现在我们知道新字符串从哪里开始，但是再哪里结尾呢？因此，需要使用另一个函数\texttt{string::find\_last\_not\_of}，其能找到最后一个非空格字符的位置：
+
+\begin{codebox}[cpp]
+    const size_t last (s.find_last_not_of(whitespace));
+\end{codebox}
+
+\item 使用\texttt{string::substr}就能返回子字符串，返回的字符串没有空格。这个函数需要两个参数——一个是字符串的起始位置，另一个是字符串的长度：
+
+\begin{codebox}[cpp]
+    return s.substr(first, (last - first + 1));
+}
+\end{codebox}
+
+\item 这就完成了。现在让我们来编写主函数，创建字符串，让字符串的前后充满空格，以便我们进行移除：
+
+\begin{codebox}[cpp]
+int main()
+{
+    string s {" \t\n string surrounded by ugly"
+             " whitespace \t\n "};
+\end{codebox}
+
+\item 我们将打印去除前和去除后的字符串。将字符串放入大括号中，这样就很容易辨别哪里有空格了：
+
+\begin{codebox}[cpp]
+    cout << "{" << s << "}\n";
+    cout << "{"
+         << trim_whitespace_surrounding(s)
+         << "}\n";
+}
+\end{codebox}
+
+\item 编译运行程序，就会得到如下的结果：
+
+\begin{codebox}[cpp]
+$ ./trim_whitespace
+{
+string surrounded by ugly whitespace
+}
+{string surrounded by ugly whitespace}
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节，我们使用了\texttt{string::find\_first\_not\_of}和\texttt{string::find\_last\_not\_of}函数。这两个函数也能接受C风格的字符串，会将其当做字符链表进行搜索。当有一个字符串\texttt{foo bar}时，当调用\texttt{find\_first\_not\_of("bfo ")}时返回5，因为'a'字符是第一个不属于\texttt{bfo}的字符。参数中字符的顺序，在这里并不重要。
+
+倒装的函数也是同样的原理，当然还有两个没有使用到的函数：\texttt{string::find\_first\_of}和\texttt{string::find\_last\_of}。
+
+同样也是基于迭代器的函数，需要检查函数是否返回了合理的位置，当没有找到时，函数会返回一个特殊的位置——\texttt{string::npos}。
+
+我们可以从辅助函数中找出字符所在的位置，并且使用\texttt{string::substr}来构造前后没有空格的字符串。这个函数接受一个首字符相对位置和字符串长度，然后就会构造一个子字符串进行返回。举个栗子，\texttt{string\{"abcdef"\}.substr(2, 2)}将返回\texttt{cd}。
+
+
+% --- recipe 3: chapter7-3-chinese.md ---
+\section{无需构造获取std::string}
+
+\texttt{std::string}类是一个十分有用的类，因为其对字符串的处理很方便。其有一个缺陷，当我们想要根据一个字符串获取其子字符串时，我们需要传入一个指针和一个长度变量，两个迭代器或一段拷贝的子字符串。我在之前的章节也这样使用过，消除字符串前后的空格的最后，使用的是拷贝的方式获得前后无空格的字符串。
+
+当我们想要传递一个字符串或一个子字符串到一个不支持\texttt{std::string}的库中时，需要提供裸指针，这样的用法就回退到C的时代。与子字符串问题一样，裸指针不携带字符串长度信息。这样的话就需要将指针和字符串长度进行捆绑。
+
+另一个十分简单的方式就是使用\texttt{std::string\_view}。这个类是C++17添加的新特性，并且能提供将字符串指针与其长度捆绑的方法，其体现了数组引用的思想。
+
+当设计函数时，将\texttt{std::string}实例作为参数，但在函数中使用了额外的内存来存储这些字符，以确保原始的字符串不被修改，这时就可以使用\texttt{std::string\_view}，其可移植性很好，与STL无关。可以让其他库来提供一个\texttt{string\_view}实现，然后将复杂的实现隐藏在背后，并且可以将其用在我们的STL代码中。这样，\texttt{string\_view}类就显得非常小，非常好用，因为其能在不同的库间都可以用。
+
+\texttt{string\_view}另一个很酷的特性，就是可以使用非拷贝的方式引用大字符串中的子字符串。本节将使用\texttt{string\_view}，从而了解其优点和缺点。我们还会看到如何使用字符串代理来去除字符两端的空格，并不对原始字符串进行修改和拷贝。
+
+\mySmallsection{How to do it...}
+
+本节，将使用\texttt{string\_view}的一些特性来实现一个函数，我们将会看到有多少种类型可以输入：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <string_view>
+using namespace std; 
+\end{codebox}
+
+\item 将\texttt{string\_view}作为函数的参数：
+
+\begin{codebox}[cpp]
+void print(string_view v)
+{ 
+\end{codebox}
+
+\item 对输入字符串做其他事情之前，将移除字符开头和末尾的空格。将不会对字符串进行修改，仅适用字符串代理获取没有空格字符串。\texttt{find\_first\_not\_of}函数将会在字符串找到第一个非空格的字符，适用\texttt{remove\_prefix}，\texttt{string\_view}将指向第一个非空格的字符。当字符串只有空格，\texttt{find\_first\_not\_of}函数会返回\texttt{npos}，其为\texttt{size\_type(-1)}。\texttt{size\_type}是一个无符号类型，其可以是一个非常大的值。所以，会在字符串代理的长度和\texttt{words\_begin}中选择较小的那个：
+
+\begin{codebox}[cpp]
+    const auto words_begin (v.find_first_not_of(" \t\n"));
+    v.remove_prefix(min(words_begin, v.size()));
+\end{codebox}
+
+\item 我们对尾部的空格做同样的事情。\texttt{remove\_suffix}将收缩到代理的大小：
+
+\begin{codebox}[cpp]
+    const auto words_end (v.find_last_not_of(" \t\n"));
+    if (words_end != string_view::npos) {
+        v.remove_suffix(v.size() - words_end - 1);
+    } 
+\end{codebox}
+
+\item 现在可以打印字符串代理和其长度：
+
+\begin{codebox}[cpp]
+    cout << "length: " << v.length()
+         << " [" << v << "]\n";
+}
+\end{codebox}
+
+\item 主函数中，将使用\texttt{print}的函数答应一系列完全不同的参数类型。首先，会通过\texttt{argv}传入\texttt{char*}类型的变量，运行时其会包含可执行文件的名字。然后，传入一个\texttt{string\_view}的实例。然后，使用C风格的静态字符串，并使用\texttt{""sv}字面字符构造的\texttt{string\_view}类型。最后，传入一个\texttt{std::string}。\texttt{print}函数不需要对参数进行修改和拷贝。这样就没有多余的内存分配发生。对于很多大型的字符串，这将会非常有效：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    print(argv[0]);
+    print({});
+    print("a const char * array");
+    print("an std::string_view literal"sv);
+    print("an std::string instance"s); 
+\end{codebox}
+
+\item 这里还没对空格移除特性进行测试。这里也给出一个头尾都有空格的字符串：
+
+\begin{codebox}[cpp]
+    print(" \t\n foobar \n \t "); 
+\end{codebox}
+
+\item \texttt{string\_view}另一个非常酷的特性是，其给予的字符串是不包含终止符的。当构造一个字符串，比如"abc"，没有终止符，\texttt{print}函数就能很安全的对其进行处理，因为\texttt{string\_view}携带字符串的长度信息和指向信息：
+
+\begin{codebox}[cpp]
+    char cstr[] {'a', 'b', 'c'};
+    print(string_view(cstr, sizeof(cstr)));
+}
+\end{codebox}
+
+\item 编译并运行程序，就会得到如下的输出，所有字符串都能被正确处理。前后有很多空格的字符串都被正确的处理，\texttt{abc}字符串没有终止符也能被正确的打印，而没有任何内存溢出：
+
+\begin{codebox}[cpp]
+$ ./string_view
+length: 17 [./string_view]
+length: 0 []
+length: 20 [a const char * array]
+length: 27 [an std::string_view literal]
+length: 23 [an std::string instance]
+length: 6 [foobar]
+length: 3 [abc]
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+我们可以看到，函数可以接受传入一个\texttt{string\_view}的参数，其看起来与字符串类型没有任何区别。我们实现的\texttt{print}，对于传入的字符串不进行任何的拷贝。
+
+对于\texttt{print(argv[0])}的调用是非常有趣的，字符串代理会自动的推断字符串的长度，因为需要将其适用于无终止符的字符串。另外，我们不能通过查找终止符的方式来确定\texttt{string\_view}实例的长度。正因如此，当使用裸指针(\texttt{string\_view::data()})的时候就需要格外小心。通常字符串函数都会认为字符串具有终止符，这样就很难出现使用裸指针时出现内存溢出的情况。这里还是使用字符串代理的接口比较好。
+
+除此之外，\texttt{std::string}接口阵容已经非常豪华了。
+
+\begin{myInfoBox}
+Note： 使用\texttt{std::string\_view}用于解析字符或获取子字符串时，能避免多余的拷贝和内存分配，并且还不失代码的舒适感。不过，对于\texttt{std::string\_view}将终止符去掉这点，需要特别注意。
+\end{myInfoBox}
+
+
+% --- recipe 4: chapter7-4-chinese.md ---
+\section{从用户的输入读取数值}
+
+本书中大多数例程的输入都是从文件或标准输入中获得。这次我们重点来了解一下读取，以及当遇到一些有问题的流时，不能直接终止程序，而是要做一些错误处理的工作。
+
+本节只会从用户输入中读取，知道如何读取后，将了解如何从其他的流中读取数据。用户输入通常通过\texttt{std::cin}，其为最基础的输入流对象，类似这样的类还有\texttt{ifstream}和\texttt{istringstream}。
+
+\mySmallsection{How to do it...}
+
+本节，将从用户输入中读取不同值，并且了解如何进行错误处理，并对输入中有用的部分进行较为复杂的标记。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+using namespace std;
+\end{codebox}
+
+\item 首先，提示用户输入两个数字。将这两个数字解析为\texttt{int}和\texttt{double}类型。例如，用户输入\texttt{1 2.3}:
+
+\begin{codebox}[cpp]
+int main()
+{
+    cout << "Please Enter two numbers:\n> ";
+    int x;
+    double y;
+\end{codebox}
+
+\item 解析和错误检查同时在\texttt{if}判断分支中进行。只有两个数都被解析成有效的数字，才能对其进行打印：
+
+\begin{codebox}[cpp]
+if (cin >> x >> y) {
+    cout << "You entered: " << x
+         << " and " << y << '\n';
+\end{codebox}
+
+\item 如果因为任何原因，解析不成功，那么我们要告诉用户为什么会出错。\texttt{cin}流对象现在处于失败的状态，并且将错误状态进行清理之前，无法为我们提供输入功能。为了能够对新的输入进行解析需要调用\texttt{cin.clear()}，并且将之前接受到的字符丢弃。使用\texttt{cin.ignore}完成丢弃的任务，这里我们指定了丢弃字符的数量，直到遇到下一个换行符为止。完成这些事之后，输入有可以用了：
+
+\begin{codebox}[cpp]
+} else {
+    cout << "Oh no, that did not go well!\n";
+    cin.clear();
+    cin.ignore(
+        std::numeric_limits<std::streamsize>::max(),
+        '\n');
+}
+\end{codebox}
+
+\item 让用户输入一些其他信息。我们让用户输入名字，名字由多个字母组成，字母间使用空格隔开。因此，可以使用\texttt{std::getline}函数，其需要传入一个流对象和一个分隔字符。我们选逗号作为分隔字符。这里使用\texttt{getline}来代替\texttt{cin >> ws}的方式读入字符，这样我们就能丢弃在名字前的所有空格。对于每一个循环中都会打印当前的名字，如果名字为空，那么我们会将其丢弃：
+
+\begin{codebox}[cpp]
+    cout << "now please enter some "
+            "comma-separated names:\n> ";
+    for (string s; getline(cin >> ws, s, ',');) {
+        if (s.empty()) { break; }
+        cout << "name: \"" << s << "\"\n";
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，就会得到如下的输出，其会让用户进行输入，然后我们输入合法的字符。数字\texttt{1 2}都能被正确的解析，并且后面输入的名字也能立即排列出来。两个逗号间没有单词的情况将会跳过：
+
+\begin{codebox}[cpp]
+$ ./strings_from_user_input
+Please Enter two numbers:
+> 1 2
+You entered: 1 and 2
+now please enter some comma-separated names:
+> john doe,ellen ripley, alice,chuck norris,,
+name: "john doe"
+name: "ellen ripley"
+name: "alice"
+name: "chuck norris"
+\end{codebox}
+
+\item 再次运行程序，这次将在一开始就输入一些非法数字，可以看到程序就会走到不同的分支，然后丢弃相应的输入，并继续监听正确的输入。可以看到\texttt{cin.clear()}和\texttt{cin.ignore(...)}的调用如何对名字读取进行影响：
+
+\begin{codebox}[cpp]
+$ ./strings_from_user_input
+Please Enter two numbers:
+> a b
+Oh no, that did not go well!
+now please enter some comma-separated names:
+> bud spencer, terence hill,,
+name: "bud spencer"
+name: "terence hill"
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节，我们对一些复杂输入进行了检索。首要注意的是，我们的检索和错误处理是同时进行。
+
+表达式\texttt{cin >> x}是对\texttt{cin}的再次引用。因此，就可以将输入些为\texttt{cin >> x >> y >> z >> ...}。与此同时，其也能将输入内容转换成为一个布尔值，并在\texttt{if}条件中使用。这个布尔值告诉我们最后一次读取是否成功，这也就是为什么我们会将代码写成\texttt{if (cin >> x >> y) \{ ... \}}的原因。
+
+当我们想要读取一个整型，但输入中包含\texttt{foobar}为下一个表示，那么流对象将无法对这段字符进行解析，并且这让输入流的状态变为失败。这对于解析来说是非常关键的，但对于整个程序来说就不是了。这里可以将输入流的状态进行重置，然后在进行其他的操作。在我们的例程中，我们尝试在读取两个数值失败后，读取一组姓名。例子中，我们使用\texttt{cin.clear()}对\texttt{cin}的工作状态进行了重置。不过，这样内部的光标就处于我们的现在的类型上，而非之前的数字。为了将之前输入的内容丢弃，并对姓名输入进行流水式的读取，我们使用了一个比较长的表达式，\texttt{ cin.ignore(std::numeric\_limits<std::streamsize>::max(),'\textbackslash{}n');}。这里对内存的清理是十分有必要的，因为我们需要在用户输入一组姓名时，对缓存进行刷新。
+
+下面的循环看起来也挺奇怪的：
+
+\begin{codebox}[cpp]
+for (string s; getline(cin >> ws, s, ',');) { ... }
+\end{codebox}
+
+\texttt{for}循环的判断部分，使用了\texttt{getline}函数。\texttt{getline}函数接受一个输入流对象，一个字符串引用作为输出，以及一个分隔符。通常，分隔字符代表新的一行。这里使用逗号作为分隔符，所以姓名输入列表为\texttt{john, carl, frank}，这样就可以单个的进行读取。
+
+目前为止还不错。不过，\texttt{cin >> ws}的操作是怎么回事呢？这可以让\texttt{cin}对所有空格进行刷新，其会读取下一个非空格字符到下一个逗号间的字符。回看一下"john, carl, frank"例子，当我们不使用\texttt{ws}时，将获取到"john"，" carl"和" frank"字符串。这里需要注意"carl"和"frank"开头不必要的空格，因为在\texttt{ws}中对输入流进行了预处理，所以能够避免开头出现空格的情况。
+
+
+% --- recipe 5: chapter7-5-chinese.md ---
+\section{计算文件中的单词数量}
+
+我们在读取一个文件的时候，也想知道这个文件中包含的单词数量。我们定义的单词是位于两个空格之间的字符组合。那要如何进行统计呢？
+
+根据对单词的定义， 我们可以统计空格的数量。例如句子\texttt{John has a funny little dog.}，这里有五个空格，所以说这句话有六个单词。
+
+如果句子中有空格干扰怎么办，例如：\texttt{ John has \textbackslash{}t a\textbackslash{}nfunny little dog .}。这句中有很多不必要的空格、制表符和换行符。本书的其他章节中，我们已经了解如何将多余空格从字符串中去掉。所以，可以对字符串进行预处理，将不必要的空格都去掉。这样做的确可行，不过我们有更加简单的方法。
+
+为了寻找最优的解决方案，我们将让用户选择，是从标准输入中获取数据，还是从文本文件中获取数据。
+
+\mySmallsection{How to do it...}
+
+本节，我们将完成一个单行统计函数，其可以对输入的数据进行计数，数据源的具体方式我们可以让用户来选择。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <algorithm>
+#include <iterator>
+using namespace std;
+\end{codebox}
+
+\item \texttt{wordcount}函数能接受一个输入流，例如\texttt{cin}。其能创建一个\texttt{std::input\_iterator}迭代器，其能对输出字符进行标记，然后交由\texttt{std::distance}进行计算。\texttt{distance}接受两个迭代器作为参数，并确定从一个迭代器到另一个迭代器要用多少步(距离)。对于随机访问迭代器，因为有减法操作符的存在，所以实现起来非常简单。其迭代器如同指针一样，可以直接进行减法，计算出两点的距离。不过\texttt{istream\_iterator}就不行，因为其是前向迭代器，只能向前读取，直至结束。最后所需要的步数也就是单词的数量：
+
+\begin{codebox}[cpp]
+template <typename T>
+size_t wordcount(T &is)
+{
+    return distance(istream_iterator<string>{is}, {});
+}
+\end{codebox}
+
+\item 主函数中，我们会让用户来选择输入源：
+
+\begin{codebox}[cpp]
+int main(int argc, char **argv)
+{
+    size_t wc;
+\end{codebox}
+
+\item 如果用户选择使用文件进行输入(例如：\texttt{./count\_all\_words some\_textfile.txt})，我们可以通过\texttt{argv}获取命令行中的文件名称，并将文件打开，读取数据，从而对其文本进行单词统计：
+
+\begin{codebox}[cpp]
+    if (argc == 2) {
+        ifstream ifs {argv[1]};
+        wc = wordcount(ifs);
+\end{codebox}
+
+\item 如果用户没有传入任何参数，就认为用户要使用标准输入流输入数据：
+
+\begin{codebox}[cpp]
+    } else {
+        wc = wordcount(cin);
+    }   
+\end{codebox}
+
+\item 然后只需要将统计出的单词数量保存在变量\texttt{wc}中即可：
+
+\begin{codebox}[cpp]
+    cout << "There are " << wc << " words\n";
+};
+\end{codebox}
+
+\item 编译并运行程序。首先，从标准输入中进行输入。我们可以这里通过echo命令将字符串，通过管道传递给程序。当然，我们也可以直接进行输入，并使用\texttt{Ctrl+D}来结束输入：
+
+\begin{codebox}[cpp]
+$ echo "foo bar baz" | ./count_all_words
+There are 3 words
+\end{codebox}
+
+\item 这次我们使用文件作为输入源，并对其中单词数量进行统计：
+
+\begin{codebox}[cpp]
+$ ./count_all_words count_all_words.cpp
+There are 61 words
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节也没有什么好多说的；实现很短，难度很低。需要提及的可能就是我们对\texttt{std::cin}和\texttt{std::ifstream}的实例进行了互换。\texttt{cin}是\texttt{std::istream}的类型之一，并且\texttt{std::ifstream}继承于\texttt{std::istream}。可以回顾一下本章开头的类型继承表。这两种类型即使在运行时，都能进行互换。
+
+\begin{myInfoBox}
+Note： 使用流来保持代码的模块性，这有助于减少代码的耦合性。因为其可以匹配任意类型的流对象，所以更容易对代码进行测试。
+\end{myInfoBox}
+
+
+% --- recipe 6: chapter7-6-chinese.md ---
+\section{格式化输出}
+
+很多情况下，仅打印字符串和数字是不够的。数字通常都以十进制进行打印，有时我们需要使用十六进制或八进制进行打印。并且在打印十六进制的时候，我们希望看到以\texttt{0x}为前缀的十六进制的数字，但有时却不希望看到这个前缀。
+
+当对浮点数进行打印的时候，也需要注意很多。以何种精度进行打印？要将数中的所有内容进行打印吗？或者是如何打印科学计数法样式的数？
+
+除了数值表示方面的问题外，还需要规范我们打印的格式。有时我们要以表格的方式进行打印，以确保打印数据的可读性。
+
+这所有的一切都与输出流有关，对输入流的解析也十分重要。本节中，我们将来感受一下格式化输出。有些显示也会比较麻烦，不过我们会对其进行解释。
+
+\mySmallsection{How to do it...}
+
+为了让大家熟悉格式化输出，本节我们将使用各种各样的格式进行打印：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iomanip>
+#include <locale>
+using namespace std;
+\end{codebox}
+
+\item 接下来，定义一个辅助函数，其会以不同的方式打印出一个数值。其能接受使用一种字符对宽度进行填充，其默认字符为空格：
+
+\begin{codebox}[cpp]
+void print_aligned_demo(int val,
+                        size_t width,
+                        char fill_char = ' ')
+{ 
+\end{codebox}
+
+\item 使用\texttt{setw}，我们可以设置打印数字的最小字符数输出个数。当我们要将123的输出宽度设置为6时，我们会得到"abc "或" abc"。我们也可以使用\texttt{std::left}, \texttt{std::right}和\texttt{std::internal}控制从哪边进行填充。当我们以十进制的方式对数字进行输出，\texttt{internal}看起来和\texttt{right}的作用一样。不过，当打印\texttt{0x1}时，打印宽度为6时，\texttt{internal}会得到"0x 6"。\texttt{setfill}控制符可以用来定义填充字符。我么可以尝试使用使用以下方式进行打印：
+
+\begin{codebox}[cpp]
+    cout << "================\n";
+    cout << setfill(fill_char);
+    cout << left << setw(width) << val << '\n';
+    cout << right << setw(width) << val << '\n';
+    cout << internal << setw(width) << val << '\n';
+}
+\end{codebox}
+
+\item 主函数中，我们使用已经实现的函数。首先，打印数字12345，其宽度为15。我们进行两次打印，不过第二次时，将填充字符设置为'\_'：
+
+\begin{codebox}[cpp]
+int main()
+{
+    print_aligned_demo(123456, 15);
+    print_aligned_demo(123456, 15, '_');
+\end{codebox}
+
+\item 随后，我们将打印\texttt{0x123abc}，并使用同样的宽度。不过，打印之前需要使用的是\texttt{std::hex}和\texttt{std::showbase}告诉输出流对象\texttt{cout}输出的格式，并且添加\texttt{0x}前缀，看起来是一个十六进制数：
+
+\begin{codebox}[cpp]
+    cout << hex << showbase;
+    print_aligned_demo(0x123abc, 15); 
+\end{codebox}
+
+\item 对于八进制我们也可以做同样的事：
+
+\begin{codebox}[cpp]
+    cout << oct;
+    print_aligned_demo(0123456, 15);
+\end{codebox}
+
+\item 通过\texttt{hex}和\texttt{uppercase}，我们可以将\texttt{0x}中的x转换成大写字母。\texttt{0x123abc}中的\texttt{abc}同样也转换成大写：
+
+\begin{codebox}[cpp]
+    cout << "A hex number with upper case letters: "
+        << hex << uppercase << 0x123abc << '\n';    
+\end{codebox}
+
+\item 如果我们要以十进制打印100，我们需要将输出从\texttt{hex}切换回\texttt{dec}：
+
+\begin{codebox}[cpp]
+    cout << "A number: " << 100 << '\n';
+    cout << dec;
+    cout << "Oops. now in decimal again: " << 100 << '\n';
+\end{codebox}
+
+\item 我们可以对布尔值的输出进行配置，通常，true会打印出1，false为0。使用\texttt{boolalpha}，我们就可以得到文本表达：
+
+\begin{codebox}[cpp]
+    cout << "true/false values: "
+        << true << ", " << false << '\n';
+    cout << boolalpha
+        << "true/false values: "
+        << true << ", " << false << '\n';
+\end{codebox}
+
+\item 现在让我们来一下浮点型变量\texttt{float}和\texttt{double}的打印。当我们有一个数12.3，那么打印也应该是12.3。当我们有一个数12.0，打印时会将小数点那一位进行丢弃，不过我们可以通过\texttt{showpoint}来控制打印的精度。使用这个控制符，就能显示被丢弃的一位小数了：
+
+\begin{codebox}[cpp]
+cout << "doubles: "
+    << 12.3 << ", "
+    << 12.0 << ", "
+    << showpoint << 12.0 << '\n';
+\end{codebox}
+
+\item 可以使用科学计数法或固定浮点的方式来表示浮点数。\texttt{scientific}会将浮点数归一化成一个十进制的小数，并且其后面的位数使用10的幂级数表示，其需要进行乘法后才能还原成原始的浮点数。比如，300.0科学计数法就表示为"3.0E2"，因为300 = 3.0 x \(10^2\)。\texttt{fixed}将会恢复普通小数的表达方式：
+
+\begin{codebox}[cpp]
+    cout << "scientific double: " << scientific
+        << 123000000000.123 << '\n';
+    cout << "fixed double: " << fixed
+        << 123000000000.123 << '\n';
+\end{codebox}
+
+\item 除此之外，我们也能对打印的精度进行控制。我们先创建一个特别小的浮点数，并对其小数点后的位数进行控制：
+
+\begin{codebox}[cpp]
+    cout << "Very precise double: "
+        << setprecision(10) << 0.0000000001 << '\n';
+    cout << "Less precise double: "
+        << setprecision(1) << 0.0000000001 << '\n';
+}
+\end{codebox}
+
+\item 编译并运行程序，我们就会得到如下的输出。前四个块都是有打印辅助函数完成，其使用\texttt{setw}对字符串进行了不同方向的填充。此外，我们也进行了数字的进制转换、布尔数表示和浮点数表示。通过实际操作，我们会对其更加熟悉：
+
+\begin{codebox}[cpp]
+$ ./formatting
+=====================
+123456         
+         123456
+         123456
+=====================
+123456_________
+_________123456
+_________123456
+=====================
+0x123abc       
+       0x123abc
+0x       123abc
+=====================
+0123456        
+        0123456
+        0123456
+A hex number with upper case letters: 0X123ABC
+A number: 0X64
+Ooop. now in decimal again: 100
+true/false values: 1, 0
+true/false values: true, false
+doubles: 12.3, 12, 12.0000
+scientific double: 1.230000E+12
+fixed double: 1230000000000.123047
+Very precise double: 0.0000000001
+Less previse double: 0.0
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+例程看起来有些长，并且\texttt{<< foo << bar}的方式对于初级读者来说会感觉到困惑。因此，让我们来看一下格式化修饰符的表。其都是用\texttt{input\_stream >> modifier }或\texttt{ output\_stream << modifier}来对之后的输入输出进行影响：
+
+\begin{table}[htbp]\centering
+\begin{tabularx}{\textwidth}{XX}
+\toprule
+符号 & 描述 \\
+\midrule
+\href{http://zh.cppreference.com/w/cpp/io/manip/setprecision}{setprecision(int)} & 打印浮点数时，决定打印小数点后的位数。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/showpoint}{showpoint / noshowpoint} & 启用或禁用浮点数字小数点的打印，即使没有小数位。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/fixed}{fixed /scientific / hexfloat /defaultfloat} & 数字可以以固定格式和科学表达式的方式进行打印。\texttt{fixed}和\texttt{scientific}代表了相应的打印模式。\texttt{hexfloat}将会同时激活这两种模式，用十六进制浮点表示法格式化浮点数。\texttt{defaultfloat}则会禁用这两种模式。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/showpos}{showpos / noshowpos} & 启用或禁用使用'+'来标志正浮点数。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/setw}{setw(int n)} & 设置打印的宽度\texttt{n}。在读取的时候，这种设置会截断输入。当打印位数不够时，其会使用填充字符将输出填充到\texttt{n}个字符。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/setfill}{setfill(char c)} & 当我们\texttt{setw}时，会涉及填充字符的设置。\texttt{setfill}可以将填充字符设置为\texttt{c}。其默认填充字符为空格。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/left}{internal / left / right} & \texttt{left}和\texttt{right}控制填充的方向。\texttt{internal}会将填充字符放置在数字和符号之间，这对于十六进制打印和一些金融数字来说，十分有用。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/hex}{dec / hex / oct} & 整数打印的类型，十进制、十六进制和八进制。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/setbase}{setbase(int n)} & 数字类型的同义函数，当\texttt{n}为\texttt{10/16/8}时，与\texttt{dec / hex / oct}完全相同。当传入0时，则会恢复默认输出，也就是十进制，或者使用数字的前缀对输入进行解析。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/quoted}{quoted(string)} & 将带有引号的字符串的引号去掉，对其实际字符进行打印。这里\texttt{string}的类型可以是\texttt{string}类的实例，也可以是一个C风格的字符串。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/boolalpha}{boolalpha / noboolalpha} & 打印布尔变量，是打印字符形式的，还是数字形式的。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/showbase}{showbase / noshowbase} & 启用或禁用基于前缀的数字解析。对于\texttt{hex}来说就是\texttt{0x}，对于\texttt{octal}来说就是\texttt{0}。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/uppercase}{uppercase / nouppercase} & 启用或禁用将浮点数中的字母或十六进制中的字符进行大写输出。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+看起来很多，想要熟悉这些控制符的最好方式，还是尽可能多的使用它们。
+
+在使用中会发现，其中有一些控制符具有粘性，另一些没有。这里的粘性是说其会持续影响接下来的所有输入或输出，直到对控制符进行重置。表格中没有粘性的为\texttt{setw}和\texttt{quoted}控制符。其只对下一次输入或输入有影响。了解这些非常重要，当我们要持续使用一个格式进行打印时，对于有粘性的控制符我们设置一次即可，其余的则在需要是进行设置。这些对输入解析同样适用，不过错误的设置了控制符则会得到错误的输入信息。
+
+下面的一些控制符我们没有使用它们，因为他们对于格式化没有任何影响，但出于完整性的考量我们在这里也将这些流状态控制符列出来：
+
+\begin{table}[htbp]\centering
+\begin{tabularx}{\textwidth}{lX}
+\toprule
+符号 & 描述 \\
+\midrule
+\href{http://zh.cppreference.com/w/cpp/io/manip/skipws}{skipws / noskipws} & 启用或禁用输入流对空格进行略过的特性。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/unitbuf}{unitbuf / nounitbuf} & 启用或禁用在进行任何输出操作后，就立即对输出缓存进行刷新。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/ws}{ws} & 从输入流舍弃前导空格。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/ends}{ends} & 向流中输入一个终止符\texttt{\textbackslash{}0}。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/flush}{flush} & 对输出缓存区进行刷新。 \\
+\href{http://zh.cppreference.com/w/cpp/io/manip/endl}{endl} & 向输出流中插入\texttt{\textbackslash{}n}字符，并且刷新输出缓存区。 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+这些控制符中，只有\texttt{skipws / noskipws}和\texttt{unitbuf / nounitbuf}是具有粘性的。
+
+
+% --- recipe 7: chapter7-7-chinese.md ---
+\section{使用输入文件初始化复杂对象}
+
+将整型、浮点型和字符串分开读取不是困难，因为流操作符\texttt{>>}对于基础类型有重载的版本，并且输入流会将输入中的空格去除。
+
+不过，对于更加复杂的结构体来说，我们应该如何将其从输入流中读取出来，并且当我们的字符串中需要多个单词的时候应该怎么做呢(在空格处不断开)？
+
+对于任意类型，我们都可以对输入流\texttt{operator>>}操作符进行重载，接下来我们就要看下如何做这件事：
+
+\mySmallsection{How to do it...}
+
+本节，我们将定义一个数据结构，并从标准输入中获取数据：
+
+\begin{enumerate}
+\item 包含必要的头文件和声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <algorithm>
+#include <iterator>
+#include <vector>
+using namespace std; 
+\end{codebox}
+
+\item 创建一个复杂的对象，我们定义了一个名为\texttt{city}的结构体。城市需要有名字，人口数量和经纬坐标。
+
+\begin{codebox}[cpp]
+struct city {
+    string name;
+    size_t population;
+    double latitude;
+    double longitude;
+};
+\end{codebox}
+
+\item 为了从输入流中读取一个城市的信息，这时我们就需要对\texttt{operator>>}进行重载。对于操作符来说，会跳过\texttt{ws}开头的所有空格，我们不希望空格来污染城市的名称。然后，会对一整行的文本进行读取。这样类似于从输入文件中读取一整行，行中只包含城市的信息。然后，我们就可以用空格将人口，经纬度进行区分：
+
+\begin{codebox}[cpp]
+istream& operator>>(istream &is, city &c)
+{
+    is >> ws;
+    getline(is, c.name);
+    is >> c.population
+        >> c.latitude
+        >> c.longitude;
+    return is;
+}
+\end{codebox}
+
+\item 主函数中，我们创建一个\texttt{vector}，其包含了若干城市元素，使用\texttt{std::copy}将其进行填充。我们会将输入的内容拷贝到\texttt{istream\_iterato}中。通过给定的\texttt{city}结构体作为模板参数，其会使用重载过的\texttt{operator>>}进行数据的读取：
+
+\begin{codebox}[cpp]
+int main()
+{
+    vector<city> l;
+    copy(istream_iterator<city>{cin}, {},
+        back_inserter(l)); 
+\end{codebox}
+
+\item 为了了解城市信息是否被正确解析，我们会将其进行打印。使用格式化输出\texttt{left << setw(15) <<}，城市名称左边必有很多的空格，这样我们的输出看起来就很漂亮：
+
+\begin{codebox}[cpp]
+ for (const auto &[name, pop, lat, lon] : l) {
+     cout << left << setw(15) << name
+         << " population=" << pop
+         << " lat=" << lat
+         << " lon=" << lon << '\n';
+ }
+}
+\end{codebox}
+
+\item 例程中所用到的文件内容如下。我们将四个城市的信息写入文件：
+
+\begin{codebox}[cpp]
+Braunschweig
+250000 52.268874 10.526770
+Berlin
+4000000 52.520007 13.404954
+New York City
+8406000 40.712784 -74.005941
+Mexico City
+8851000 19.432608 -99.133208
+\end{codebox}
+
+\item 编译并运行程序，将会得到如下输入。我们在输入文件中为城市名称前添加一些不必要的空白，以查看空格是如何被过滤掉的：
+
+\begin{codebox}[cpp]
+$ cat cities.txt| ./initialize_complex_objects
+Braunschweig    population = 250000 lat = 52.2689 lon = 10.5268
+Berlin          population = 4000000 lat = 52.52 lon = 13.405
+New York City   population = 8406000 lat = 40.7128 lon = -74.0059
+Mexico City     population = 8851000 lat = 19.4326 lon = -99.1332
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节也非常短。我们只是创建了一个新的结构体\texttt{city}，我们对\texttt{std::istream}迭代器的\texttt{operator>>}操作符进行重载。这样也就允许我们使用\texttt{istream\_iterator<city>}对数据进行反序列化。
+
+关于错误检查则是一个开放性的问题。我们现在再来看下\texttt{operator>>}实现：
+
+\begin{codebox}[cpp]
+istream& operator>>(istream &is, city &c)
+{
+    is >> ws;
+    getline(is, c.name);
+    is >> c.population >> c.latitude >> c.longitude;
+    return is;
+}
+\end{codebox}
+
+我们读取了很多不同的东西。读取数据发生了错误，下一个应该怎么办？这是不是意味着我们有可能读取到错误的数据？不会的，这不可能发生。即便是其中一个元素没有被输入流进行解析，那么输入流对象则会置于错误的状态，并且拒绝对剩下的输入进行解析。这样就意味着，如果\texttt{c.population}或\texttt{c.latitude}没有被解析出来，那么对应的输入数据将会被丢弃，并且我们可以看到反序列了一半的\texttt{city}对象。
+
+站在调用者的角度，我们需要注意这句\texttt{if(input\_stream >> city\_object)}。这也就表面流表达式将会被隐式转换成一个布尔值。当其返回false时，输入流对象则处于错误状态。如果出现错误，就需要采取相应的措施对流进行重置。
+
+本节中没有使用\texttt{if}判断，因为我们让\texttt{ std::istream\_iterator<city>}进行反序列化。\texttt{operator++}在迭代器的实现中，会在解析时对其状态进行检查。当遇到错误时，其将会停止之后的所有迭代。当前迭代器与\texttt{end}迭代器比较返回true时，将终止\texttt{copy}算法的执行。如此，我们的代码就很安全了。
+
+
+% --- recipe 8: chapter7-8-chinese.md ---
+\section{迭代器填充容器——std::istream}
+
+上节中，我们学习了如何从输入流中向数据结构中读入数据，然后用这些数据填充列表或向量。
+
+这次，我们将使用标准输入来填充\texttt{std::map}。问题在于我们不能将一个结构体进行填充，然后从后面推入到线性容器中，例如\texttt{lis}t和\texttt{vector}，因为\texttt{map}的负载分为键和值两部分。
+
+完成本节后，我们会了解到如何从字符流中将复杂的数据结构进行序列化和反序列化。
+
+\mySmallsection{How to do it...}
+
+本节，我们会定义一个新的结构体，不过这次将其放入\texttt{map}中，这会让问题变得复杂，因为容器中使用键值来表示所有值。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iomanip>
+#include <map>
+#include <iterator>
+#include <algorithm>
+#include <numeric>
+using namespace std;
+\end{codebox}
+
+\item 我们会引用网络上的一些梗。这里的梗作为一个名词，我们记录其描述和诞生年份。我们会将这些梗放入\texttt{std::map}，其名称为键，包含在结构体中的其他信息作为值：
+
+\begin{codebox}[cpp]
+struct meme {
+    string description;
+    size_t year;
+};
+\end{codebox}
+
+\item 我们暂时先不去管键，我们先来实现结构体\texttt{meme}的流操作符\texttt{operator>>}。我们假设相关梗的描述由双引号括起来，后跟对应年份。举个栗子，\texttt{ "some description" 2017}。通过使用\texttt{is >> quoted(m.description)}，双引号会被当做限定符，直接被丢弃。这就非常的方便。然后我们继续读取年份即可：
+
+\begin{codebox}[cpp]
+istream& operator>>(istream &is, meme &m) {
+    return is >> quoted(m.description) >> m.year;
+}
+\end{codebox}
+
+\item OK，现在将梗的名称作为键插入\texttt{map}中。为了实现插入\texttt{map}，需要一个\texttt{std::pair<key\_type, value\_type>}实例。\texttt{key\_type}为\texttt{string}，那么\texttt{value\_type}就是\texttt{meme}了。名字中允许出现空格，所以可以使用\texttt{quoted}对名称进行包装。\texttt{p.first}是名称，\texttt{p.second}代表的是相关\texttt{map}0结构体变量。可以使用\texttt{map}1实现直接对其进行赋值：
+
+\begin{codebox}[cpp]
+istream& operator >>(istream &is,
+                    pair<string, meme> &p) {
+    return is >> quoted(p.first) >> p.second;
+}
+\end{codebox}
+
+\item 现在来写主函数，创建一个\texttt{map}实例，然后对其进行填充。因为对流函数\texttt{operator>>}进行了重载，所以可以直接对\texttt{istream\_iterator}类型直接进行处理。我们将会从标准输入中解析出更多的信息，然后使用\texttt{inserter}迭代器将其放入\texttt{map}中：
+
+\begin{codebox}[cpp]
+int main()
+{
+    map<string, meme> m;
+    copy(istream_iterator<pair<string, meme>>{cin},
+        {},
+        inserter(m, end(m))); 
+\end{codebox}
+
+\item 对梗进行打印前，先在\texttt{map}中找到名称最长的梗吧。可以对其使用\texttt{std::accumulate}。累加的初始值为0u(u为无符号类型)，然后逐个访问\texttt{map}中的元素，将其进行合并。使用\texttt{accumulate}合并，就意味着叠加。例子中，并不是对数值进行叠加，而是对最长字符串的长度进行进行累加。为了得到长度，我们为\texttt{accumulate}提供了一个辅助函数\texttt{max\_func}，其会将当前最大的变量与当前梗的名字长度进行比较(这里两个数值类型需要相同)，然后找出这些值中最大的那个。这样\texttt{accumulate}函数将会返回当前梗中，名称最长的梗：
+
+\begin{codebox}[cpp]
+auto max_func ([](size_t old_max,
+                 const auto &b) {
+    return max(old_max, b.first.length());
+});
+size_t width {accumulate(begin(m), end(m),
+                        0u, max_func)};
+\end{codebox}
+
+\item 现在，对\texttt{map}进行遍历，然后打印其中每一个元素。使用\texttt{<< left << setw(width)}打印出漂亮的“表格”：
+
+\begin{codebox}[cpp]
+    for (const auto &[meme_name, meme_desc] : m) {
+        const auto &[desc, year] = meme_desc;
+        cout << left << setw(width) << meme_name
+             << " : " << desc
+             << ", " << year << '\n';
+    }
+}
+\end{codebox}
+
+\item 现在需要一些梗的数据，我们写了一些梗在文件中：
+
+\begin{codebox}[cpp]
+"Doge" "Very Shiba Inu. so dog. much funny. wow." 2013
+"Pepe" "Anthropomorphic frog" 2016
+"Gabe" "Musical dog on maximum borkdrive" 2016
+"Honey Badger" "Crazy nastyass honey badger" 2011
+"Dramatic Chipmunk" "Chipmunk with a very dramatic look" 2007
+\end{codebox}
+
+\item 编译并运行程序，将文件作为数据库进行输入：
+
+\begin{codebox}[cpp]
+$ cat memes.txt | ./filling_containers
+Doge: Very Shiba Inu. so dog. much funny. wow., 2013
+Dramatic Chipmunk : Chipmunk with a very dramatic look, 2007
+Gabe: Musical dog on maximum borkdrive, 2016
+Honey Badger: Crazy nastyass honey badger, 2011
+Pepe: Anthropomorphic frog, 2016
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节有三点需要注意。第一，没有选择\texttt{vector}或\texttt{list}比较简单的结构，而是选择了\texttt{map}这样比较复杂的结构。第二，使用了\texttt{quoted}控制符对输入流进行处理。第三，使用\texttt{accumulate}来找到最长的键值。
+
+我们先来看一下\texttt{map}，结构体\texttt{meme}只包含一个\texttt{description}和\texttt{year}。因为我们将梗的名字作为键，所以没有将其放入结构体中。可以将\texttt{std::pair}实例插入\texttt{map}中，首先实现了结构体\texttt{meme}的流操作符\texttt{operator>>}，然后对\texttt{pair<string, meme>}做同样的事。最后，使用\texttt{ istream\_iterator<pair<string, meme>>\{cin\}}从标准输入中获取每个元素的值，然后使用\texttt{meme}0将组对插入\texttt{meme}1中。
+
+当我们使用流对\texttt{meme}元素进行赋值时，允许梗的名称和描述中带有空格。我们使用引号控制符，很轻易的将问题解决，得到的信息类似于这样，\texttt{"Name with spaces" "Description with spaces" 123}。
+
+当输入和输出都对带有引号的字符串进行处理时，\texttt{std::quoted}就能帮助到我们。当有一个字符串\texttt{s}，使用\texttt{cout << quoted(s)}对其进行打印，将会使其带引号。当对流中的信息进行解析时，\texttt{cin >> quoted(s)}其就能帮助我们将引号去掉，保留引号中的内容。
+
+叠加操作是对\texttt{max\_func}的调用看起来很奇怪：
+
+\begin{codebox}[cpp]
+auto max_func ([](size_t old_max, const auto &b) {
+    return max(old_max, b.first.length());
+});
+
+size_t width {accumulate(begin(m), end(m), 0u, max_func)};
+\end{codebox}
+
+实际上，\texttt{max\_func}能够接受一个\texttt{size\_t}和一个\texttt{auto}类型的参数，这两个参数将转换成一个\texttt{pair}，从而就能插入\texttt{map}中。这看起来很奇怪，因为二元函数会将两个相同类型的变量放在一起操作，例如\texttt{std::plus}。我们会从每个组对中获取键值的长度，将当前元素的长度值与之前的最长长度相对比。
+
+叠加调用会将\texttt{max\_func}的返回值与0u值进行相加，然后作为左边参数的值与下一个元素进行比较。第一次左边的参数为0u，所以就可以写成\texttt{max(0u, string\_length)}，这时返回的值就作为之前最大值，与下一个元素的名称长度进行比较，以此类推。
+
+
+% --- recipe 9: chapter7-9-chinese.md ---
+\section{迭代器进行打印——std::ostream}
+
+使用输出流进行打印是一件很容易的事情，STL中的大多数基本类型都对\texttt{operator<<}操作符进行过重载。所以使用\texttt{std::ostream\_iterator}类，就可以将数据类型中所具有的的元素进行打印，我们已经在之前的章节中这样做了。
+
+本节中，我们将关注如何将自定义的类型进行打印，并且可以通过模板类进行控制。对于调用者来说，无需写太多的代码。
+
+\mySmallsection{How to do it...}
+
+我们将对一个新的自定义的类使用\texttt{std::ostream\_iterator}，并且看起来其具有隐式转换的能力，这就能帮助我们进行打印：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+#include <iterator>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+using namespace std::string_literals;
+\end{codebox}
+
+\item 让我们实现一个转换函数，其会将数字和字符串相对应。比如输入1，就会返回“one”；输入2，就会返回“two”，以此类推：
+
+\begin{codebox}[cpp]
+string word_num(int i) {
+\end{codebox}
+
+\item 将会对哈希表进行填充，我们后续可以对它进行访问：
+
+\begin{codebox}[cpp]
+    unordered_map<int, string> m {
+        {1, "one"}, {2, "two"}, {3, "three"},
+        {4, "four"}, {5, "five"}, //...
+    };
+\end{codebox}
+
+\item 现在可以使用哈希表的\texttt{find}成员函数，通过传入相应的键值，返回对应的值。如果\texttt{find}函数找不到任何东西，我们就会得到一个"unknown"字符串：
+
+\begin{codebox}[cpp]
+    const auto match (m.find(i));
+    if (match == end(m)) { return "unknown"; }
+    return match->second;
+}; 
+\end{codebox}
+
+\item 接下来我们就要定义一个结构体\texttt{bork}。其仅包含一个整型成员，其可以使用一个整型变量进行隐式构造。其具有\texttt{print}函数，其能接受一个输出流引用，通过\texttt{borks}结构体的整型成员变量，重复打印"bork"字符串：
+
+\begin{codebox}[cpp]
+struct bork {
+    int borks;
+    bork(int i) : borks{i} {}
+    void print(ostream& os) const {
+        fill_n(ostream_iterator<string>{os, " "},
+               borks, "bork!"s);
+    }
+};
+\end{codebox}
+
+\item 为了能够更方便的对\texttt{bork}进行打印，对\texttt{operator<<}进行了重载，当通过输出流对\texttt{bork}进行输出时，其会自动的调用\texttt{bork::print}：
+
+\begin{codebox}[cpp]
+ostream& operator<<(ostream &os, const bork &b) {
+    b.print(os);
+    return os;
+}
+\end{codebox}
+
+\item 现在来实现主函数，先来初始化一个\texttt{vector}:
+
+\begin{codebox}[cpp]
+int main()
+{
+    const vector<int> v {1, 2, 3, 4, 5};
+\end{codebox}
+
+\item \texttt{ostream\_iterator}需要一个模板参数，其能够表述哪种类型的变量我们能够进行打印。当使用\texttt{ostream\_iterator<T>}时，其会使用\texttt{ ostream\& operator(ostream\&, const T\&)}进行打印。这也就是之前在\texttt{bork}类型中重载的输出流操作符。我们这次只对整型数字进行打印，所以使用\texttt{ostream\_iterator<int> }。使用\texttt{cout}进行打印，并可以将其作为构造参数。我们使用循环对\texttt{vector}进行访问，并且对每个输出迭代器\texttt{i}进行解引用。这也就是在STL算法中流迭代器的用法：
+
+\begin{codebox}[cpp]
+    ostream_iterator<int> oit {cout};
+    for (int i : v) { *oit = i; }
+    cout << '\n';
+\end{codebox}
+
+\item 使用的输出迭代器还不错，不过其打印没有任何分隔符。当需要空格分隔符对所有打印的元素进行分隔时，我们可以将空格作为第二个参数传入输出流构造函数中。这样，其就能打印"1, 2, 3, 4, 5, "，而非"12345"。不过，不能在打印最后一个数字的时候将“逗号-空格”的字符串丢弃，因为迭代器并不知道哪个数字是最后一个：
+
+\begin{codebox}[cpp]
+    ostream_iterator<int> oit_comma {cout, ", "};
+    for (int i : v) { *oit_comma = i; }
+    cout << '\n';
+\end{codebox}
+
+\item 为了将其进行打印，我们将值赋予一个输出流迭代器。这个方法可以和算法进行结合，其中最简单的方式就是\texttt{std::copy}。我们可以通过提供\texttt{begin}和\texttt{end}迭代器来代表输入的范围，在提供输出流迭代器作为输出迭代器。其将打印\texttt{vector}中的所有值。这里我们会将两个输出循环进行比较：
+
+\begin{codebox}[cpp]
+    copy(begin(v), end(v), oit);
+    cout << '\n';
+    copy(begin(v), end(v), oit_comma);
+    cout << '\n';
+\end{codebox}
+
+\item 还记得\texttt{word\_num}函数吗？其会将数字和字符串进行对应。我们也可以使用进行打印。我们只需要使用一个输出流操作符，因为我们不需要对整型变量进行打印，所以这里使用的是\texttt{string}的特化版本。使用\texttt{std::transfrom}替代\texttt{std::copy}，因为需要使用转换函数将输入范围内的值转换成其他值，然后拷贝到输出中：
+
+\begin{codebox}[cpp]
+transform(begin(v), end(v),
+         ostream_iterator<string>{cout, " "}, word_num);
+cout << '\n';
+\end{codebox}
+
+\item 程序的最后一行会对\texttt{bork}结构体进行打印。可以直接使用，也并不需要为\texttt{std::transform}函数提供任何转换函数。另外，可以创建一个输出流迭代器，其会使用\texttt{bork}进行特化，然后再调用\texttt{std::copy}。\texttt{bork}实例可以通过输入范围内的整型数字进行隐式创建。然后，将会得到一些有趣的输出：
+
+\begin{codebox}[cpp]
+    copy(begin(v), end(v),
+         ostream_iterator<bork>{cout, "\n"});
+}
+\end{codebox}
+
+\item 编译并运行程序，就会得到以下输出。前两行和第三四行的结果非常类似。然后，会得到数字对应的字符串，然后就会得到一堆\texttt{bork!}字符串。其会打印很多行，因为我们使用换行符替换了空格：
+
+\begin{codebox}[cpp]
+$ ./ostream_printing
+12345
+1, 2, 3, 4, 5,
+12345
+1, 2, 3, 4, 5,
+one two three four five
+bork!
+bork! bork!
+bork! bork! bork!
+bork! bork! bork! bork!
+bork! bork! bork! bork! bork!
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+作为一个语法黑客，我们应知道\texttt{std::ostream\_iterator}可以用来对数据进行打印，其在语法上为一个迭代器，对这个迭代器进行累加是无效的。对其进行解引用会返回一个代理对象，这些赋值操作符会将这些数字转发到输出流中。
+
+输出流迭代器会对类型T进行特化(\texttt{ostream\_iterator<T> })，对于所有类型的\texttt{ ostream\& operator<<(ostream\&, const T\&)}来说，都需要对其进行实现。
+
+\texttt{ostream\_iterator}总是会调用\texttt{ operator<<}，通过模板参数，我们已经对相应类型进行了特化。如果类型允许，这其中会发生隐式转换。当A可以隐式转换为B时，我们可以对A类型的元素进行迭代，然后将这些元素拷贝到\texttt{ output\_iterator<B>}的实例中。我们会对\texttt{bork}结构体做同样的事情：\texttt{bork}实例也可以隐式转换为一个整数，这也就是我们能够很容易的在终端输出一堆\texttt{bork!}的原因。
+
+如果不能进行隐式转换，可使用\texttt{std::treansform}和\texttt{word\_num}函数相结合，对元素类型进行转换。
+
+\begin{myInfoBox}
+Note： 通常，对于自定义类型来说，隐式转换是一种不好的习惯，因为这是一个常见的Bug源，并且这种Bug非常难找。例子中，隐式构造函数有用程度要超过其危险程度，因为相应的类只是进行打印。
+\end{myInfoBox}
+
+
+% --- recipe 10: chapter7-10-chinese.md ---
+\section{使用特定代码段将输出重定向到文件}
+
+\texttt{std::cout}为我们提供了一种非常方便的打印方式，使用起来也十分方便，易于扩展，并可全局访问。即使我们想打印对应的信息时，比如错误信息，我们可以使用错误输出\texttt{std::cerr}进行输出，其和\texttt{cout}的用法一样，只不过一个从标准通道进行输出，另一个从错误通道进行输出。
+
+当我们要打印比较复杂的日志信息时。比如，要将函数的输出重定向到一个文件中，或者将函数的打印输出处于静默状态，而不需要对函数进行任何修改。或许这个函数为一个库函数，我们没有办法看到其源码。可能，这个函数并没有设计为写入到文件的函数，但是我们还是想将其输出输入到文件中。
+
+这里可以重定向输出流对象的输出。本节中，我们将看到如何使用一种简单并且优雅地方式来完成输出流的重定向。
+
+\mySmallsection{How to do it...}
+
+我们将实现一个辅助类，其能在构造和析构阶段，帮助我们完成流的重定向，以及对流的定向进行恢复。然后，我们来看其是怎么使用的：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <fstream>
+using namespace std;
+\end{codebox}
+
+\item 我们实现了一个类，其具有一个文件输出流对象和一个指向流内部缓冲区的指针。\texttt{cout}作为流对象，其内部具有一个缓冲区，其可以用来进行数据交换，我们可以保存我们之前做过的事情，这样就很方便进行对后续修改的撤销。我们可以在C++手册中查询对其返回类型的解释，也可以使用\texttt{decltype}对\texttt{cout.rdbuf()}所返回的类型进行查询。这并不是一个很好的体验，在我们的例子中，其就是一个指针类型：
+
+\begin{codebox}[cpp]
+class redirect_cout_region
+{
+    using buftype = decltype(cout.rdbuf());
+    ofstream ofs;
+    buftype buf_backup; 
+\end{codebox}
+
+\item 类的构造函数接受一个文件名字符串作为输入参数。这个字符串用来初始化文件流成员\texttt{ofs}。对其进行初始化后，可以将其输入到\texttt{cout}作为一个新的流缓冲区。\texttt{rdbuf}在接受一个新缓冲区的同时，会将旧缓冲区以指针的方式进行返回，这样当需要对缓冲区进行恢复时，就可以直接使用了：
+
+\begin{codebox}[cpp]
+public:
+    explicit
+    redirect_cout_region (const string &filename)
+    : ofs{filename}
+    , buf_backup{cout.rdbuf(ofs.rdbuf())}
+    {}
+\end{codebox}
+
+\item 默认构造函数和其他构造函数做的事情几乎一样。其区别在于，默认构造函数不会打开任何文件。默认构造的文件流会直接替换\texttt{cout}的流缓冲，这样会导致\texttt{cout}的一些功能失效。其会丢弃一些要打印的东西。这在某些情况下是非常有用的：
+
+\begin{codebox}[cpp]
+redirect_cout_region()
+: ofs{}
+,buf_backup{cout.rdbuf(ofs.rdbuf())}
+{}
+\end{codebox}
+
+\item 析构函数会对重定向进行恢复。当类在运行过程中超出了范围，可以使用原始的\texttt{cout}流缓冲区对其进行还原：
+
+\begin{codebox}[cpp]
+    ~redirect_cout_region() {
+        cout.rdbuf(buf_backup);
+    }
+};
+\end{codebox}
+
+\item 让我们模拟一个有很多输出的函数：
+
+\begin{codebox}[cpp]
+void my_output_heavy_function()
+{
+    cout << "some output\n";
+    cout << "this function does really heavy work\n";
+    cout << "... and lots of it...\n";
+    // ...
+}
+\end{codebox}
+
+\item 主函数中，我们先会进行一次标准打印：
+
+\begin{codebox}[cpp]
+int main()
+{
+    cout << "Readable from normal stdout\n";
+\end{codebox}
+
+\item 现在进行重定向，首先使用一个文本文件名对类进行实例化。文件流会使用读取和写入模式作为默认模式，所以其会创建一个文件。所以即便是后续使用\texttt{cout}进行打印，其输出将会重定向到这个文件中：
+
+\begin{codebox}[cpp]
+    {
+        redirect_cout_region _ {"output.txt"};
+        cout << "Only visible in output.txt\n";
+        my_output_heavy_function();
+    }
+\end{codebox}
+
+\item 离开这段代码后，文件将会关闭，打印输出也会重归标准输出。我们再开启一个代码段，并使用默认构造函数对类进行构造。这样后续的打印信息将无法看到，都会被丢弃：
+
+\begin{codebox}[cpp]
+{
+    redirect_cout_region _;
+    cout << "This output will "
+            "completely vanish\n";
+}
+\end{codebox}
+
+\item 离开这段代码后，我们的标准输出将再度恢复，并且将程序的最后一行打印出来：
+
+\begin{codebox}[cpp]
+    cout << "Readable from normal stdout again\n";
+}
+\end{codebox}
+
+\item 编译并运行这个程序，其输出和我们期望的一致。我们只看到了第一行和最后一行输出：
+
+\begin{codebox}[cpp]
+$ ./log_regions
+Readable from normal stdout
+Readable from normal stdout again
+\end{codebox}
+
+\item 我们可以将新文件output.txt打开，其内容如下：
+
+\begin{codebox}[cpp]
+$ cat output.txt
+Only visible in output.txt
+some output
+this function does really heavy work
+... and lots of it...
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+每个流对象都有一个内部缓冲区，这样的缓冲区可以进行交换。当我们有一个流对象\texttt{s}时，我们将其缓冲区存入到变量\texttt{a}中，并且为流对象换上了一个新的缓冲区\texttt{b}，这段代码就可以完成上述的过程:\texttt{ a = s.rdbuf(b)}。需要恢复的时候只需要执行\texttt{s.rdbuf(a)}。
+
+这就如同我们在本节所做的。另一件很酷的事情是，可以将这些\texttt{redirect\_cout\_region}辅助函数放入堆栈中：
+
+\begin{codebox}[cpp]
+{
+    cout << "print to standard output\n";
+    
+    redirect_cout_region la {"a.txt"};
+    cout << "print to a.txt\n";
+    
+    redirect_cout_region lb {"b.txt"};
+    cout << "print to b.txt\n";
+}
+cout << "print to standard output again\n";
+\end{codebox}
+
+这也应该好理解，通常析构的顺序和构造的顺序是相反的。这种模式是将对象的构造和析构进行紧耦合，其也称作为\textbf{资源获得即初始化(RAII)}。
+
+这里有一个很重要的点需要注意——\texttt{redirect\_cout\_region}类中成员变量的初始化顺序：
+
+\begin{codebox}[cpp]
+class redirect_cout_region {
+    using buftype = decltype(cout.rdbuf());
+    ofstream ofs;
+    buftype buf_backup;
+public:
+    explicit
+    redirect_cout_region(const string &filename)
+    : ofs{filename},
+    buf_backup{cout.rdbuf(ofs.rdbuf())}
+    {}
+...
+\end{codebox}
+
+我们可以看到，成员\texttt{buf\_backup}的初始化需要依赖成员\texttt{ofs}进行。有趣的是，这些成员初始化的顺序，不会按照初始化列表中给定元素的顺序进行初始化。这里初始化的顺序值与成员变量声明的顺序有关！
+
+\begin{myInfoBox}
+Note： 当一成员变量需要在另一个成员变量之后进行初始化，其需要在类声明的时候以相应的顺序进行声明。初始化列表中的顺序，对于构造函数来说没有任何影响。
+\end{myInfoBox}
+
+
+% --- recipe 11: chapter7-11-chinese.md ---
+\section{通过集成std::char\_traits创建自定义字符串类}
+
+我们知道\texttt{std::string}非常好用。不过，对于一些朋友来说他们需要对自己定义的字符串类型进行处理。
+
+使用它们自己的字符串类型显然不是一个好主意，因为对于字符串的安全处理是很困难的。幸运的是，\texttt{std::string}是\texttt{std::basic\_string}类型的一个特化版本。这个类中包含了所有复杂的内存处理，不过其对字符串的拷贝和比较没有添加任何条件。所以我们可以基于\texttt{basic\_string}，将其所需要包含的自定义类作为一个模板参数传入。
+
+本节中，我们将来看下如何传入自定义类型。然后，在不实现任何东西的情况下，如何对自定义字符串进行创建。
+
+\mySmallsection{How to do it...}
+
+我们将实现两个自定义字符串类：\texttt{lc\_string}和\texttt{ci\_string}。第一个类将通过输入创建一个全是小写字母的字符串。另一个字符串类型不会对输入进行任何变化，不过其会对字符串进行大小写不敏感的比较：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <algorithm>
+#include <string>
+using namespace std;
+\end{codebox}
+
+\item 然后要对\texttt{std::tolower}函数进行实现，其已经定义在头文件\texttt{<cctype>}中。其函数也是现成的，不过其不是\texttt{constexpr}类型。C++17中一些\texttt{string}函数可以声明成\texttt{constexpr}类型，但是还要使用自定义的类型。所以对于输入字符串，只将大写字母转换为小写，而其他字符则不进行修改：
+
+\begin{codebox}[cpp]
+static constexpr char tolow(char c) {
+    switch (c) {
+    case 'A'...'Z': return c - 'A' + 'a'; // 读者自行将case展开
+    default:        return c;
+    }
+}
+\end{codebox}
+
+\item \texttt{std::basic\_string}类可以接受三个模板参数：字符类型、字符特化类和分配器类型。本节中我们只会修改字符特化类，因为其定义了字符串的行为。为了重新实现与普通字符串不同的部分，我们会以\texttt{public}方式继承标准字符特化类：
+
+\begin{codebox}[cpp]
+class lc_traits : public char_traits<char> {
+public:
+\end{codebox}
+
+\item 我们类能接受输入字符串，并将其转化成小写字母。这里有一个函数，其是字符级别的，所以我们可以对其使用\texttt{tolow}函数。我们的这个函数为\texttt{constexpr}：
+
+\begin{codebox}[cpp]
+    static constexpr
+    void assign(char_type& r, const char_type& a ) {
+        r = tolow(a);
+    }
+\end{codebox}
+
+\item 另一个函数将整个字符串拷贝到我们的缓冲区内。使用\texttt{std::transform}将所有字符从源字符串中拷贝到内部的目标字符串中，同时将每个字符与其小写版本进行映射：
+
+\begin{codebox}[cpp]
+    static char_type* copy(char_type* dest,
+                         const char_type* src,
+                         size_t count) {
+        transform(src, src + count, dest, tolow);
+        return dest;
+    }
+};
+\end{codebox}
+
+\item 上面的特化类可以帮助我们创建一个字符串类，其能有效的将字符串转换成小写。接下来我们在实现一个类，其不会对原始字符串进行修改，但是其能对字符串做大小写敏感的比较。其继承于标准字符串特征类，这次将对一些函数进行重新实现：
+
+\begin{codebox}[cpp]
+class ci_traits : public char_traits<char> {
+public:
+\end{codebox}
+
+\item \texttt{eq}函数会告诉我们两个字符是否相等。我们也会实现一个这样的函数，但是我们只实现小写字母的版本。这样'A'与'a'就是相等的：
+
+\begin{codebox}[cpp]
+static constexpr bool eq(char_type a, char_type b) {
+    return tolow(a) == tolow(b);
+}
+\end{codebox}
+
+\item \texttt{lt}函数会告诉我们两个字符在字母表中的大小情况。这里使用了逻辑操作符，并继续对两个字符使用转换成小写的函数：
+
+\begin{codebox}[cpp]
+static constexpr bool lt(char_type a, char_type b) {
+    return tolow(a) < tolow(b);
+}   
+\end{codebox}
+
+\item 最后两个函数都是字符级别的函数，接下来两个函数都为字符串级别的函数。\texttt{compare}函数与\texttt{strncmp}函数差不多。当两个字符串的长度\texttt{count}相等，那么就返回0。如果不相等，会返回一个负数或一个正数，返回值就代表了其中哪一个在字母表中更小。并计算两个字符串中所有字符之间的距离，当然这些都是在小写情况下进行的操作。C++14后，这个函数可以声明成\texttt{constexpr}类型：
+
+\begin{codebox}[cpp]
+    static constexpr int compare(const char_type* s1,
+                           const char_type* s2,
+                           size_t count) {
+       for (; count; ++s1, ++s2, --count) {
+           const char_type diff (tolow(*s1) - tolow(*s2));
+           if (diff < 0) { return -1; }
+           else if (diff > 0) { return +1; }
+       }
+    return 0;
+   }
+\end{codebox}
+
+\item 我们所需要实现的最后一个函数就是大小写不敏感的\texttt{find}函数。对于给定输入字符串\texttt{p}，其长度为\texttt{count}，我们会对某个字符\texttt{ch}的位置进行查找。然后，其会返回一个指向第一个匹配字符位置的指针，如果没有找到则返回\texttt{nullptr}。这个函数比较过程中我们需要使用\texttt{tolow}函数将字符串转换成小写，以匹配大小写不敏感的查找。不幸的是，我们不能使用\texttt{std::find\_if}来做这件事，因为其是非\texttt{constexpr}函数，所以我们需要自己去写一个循环：
+
+\begin{codebox}[cpp]
+    static constexpr
+    const char_type* find(const char_type* p,
+                          size_t count,
+                          const char_type& ch) {
+    const char_type find_c {tolow(ch)};
+    for (; count != 0; --count, ++p) {
+        if (find_c == tolow(*p)) { return p; }
+    }
+        return nullptr;
+    }
+};
+\end{codebox}
+
+\item OK，所有自定义类都完成了。这里我们可以定义两种新字符串类的类型。\texttt{lc\_string}代表小写字符串，\texttt{ci\_string}代表大小写不敏感字符串。这两种类型与\texttt{std::string}都有所不同：
+
+\begin{codebox}[cpp]
+using lc_string = basic_string<char, lc_traits>;
+using ci_string = basic_string<char, ci_traits>;
+\end{codebox}
+
+\item 为了能让输出流接受新类，我们需要对输出流操作符进行重载：
+
+\begin{codebox}[cpp]
+ostream& operator<<(ostream& os, const lc_string& str) {
+    return os.write(str.data(), str.size());
+}
+ostream& operator<<(ostream& os, const ci_string& str) {
+    return os.write(str.data(), str.size());
+}
+\end{codebox}
+
+\item 现在我们来对主函数进行编写。先让我们创建一个普通字符串、小写字符串和大小写不敏感字符串的实例，然后直接将其进行打印。其在终端上看起来都很正常，不过小写字符串将所有字符转换成了小写：
+
+\begin{codebox}[cpp]
+int main()
+{
+    cout << " string: "
+        << string{"Foo Bar Baz"} << '\n'
+        << "lc_string: "
+        << lc_string{"Foo Bar Baz"} << '\n'
+        << "ci_string: "
+        << ci_string{"Foo Bar Baz"} << '\n';
+\end{codebox}
+
+\item 为了测试大小写不敏感字符串，可以实例化两个字符串，这两个字符串只有在大小写方面有所不同。当我们将这两个字符串进行比较时，其应该是相等的：
+
+\begin{codebox}[cpp]
+    ci_string user_input {"MaGiC PaSsWoRd!"};
+    ci_string password {"magic password!"};
+\end{codebox}
+
+\item 之后，对其进行比较，然后将匹配的结果进行打印：
+
+\begin{codebox}[cpp]
+    if (user_input == password) {
+        cout << "Passwords match: \"" << user_input
+             << "\" == \"" << password << "\"\n";
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，其输出和我们期望的相符。开始的三行并未对输入进行修改，除了\texttt{lc\_string}将所有字符转换成了小写。最后的比较，在大小写不敏感的前提下，也是相等的：
+
+\begin{codebox}[cpp]
+$ ./custom_string
+string: Foo Bar Baz
+lc_string: foo bar baz
+ci_string: Foo Bar Baz
+Passwords match: "MaGiC PaSsWoRd!" == "magic password!"
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+我们完成的所有子类和函数实现，在新手看来十分的不可思议。这些函数签名都来自于哪里？为什么我们为了函数签名，就要对相关功能性的函数进行重新实现呢？
+
+首先，来看一下\texttt{std::string}的类声明：
+
+\begin{codebox}[cpp]
+template <
+    class CharT,
+    class Traits = std::char_traits<CharT>,
+    class Allocator = std::allocator<CharT>
+    >
+class basic_string;
+\end{codebox}
+
+可以看出\texttt{std::string}其实就是一个\texttt{std::basic\_string<char>} 类，并且其可以扩展为\texttt{std::basic\_string<char, std::char\_traits<char>, std::allocator<char>> }。OK，这是一个非常长的类型描述，不过其意义何在呢？这就表示字符串可以不限于有符号类型\texttt{char}，也可以是其他类型。其对于字符串类型都是有效的，这样就不限于处理ASCII字符集。当然，这不是我们的关注点。
+
+\texttt{ char\_traits<char>}类包含\texttt{basic\_string}所需要的算法。\texttt{ char\_traits<char>}可以进行字符串间的比较、查找和拷贝。
+
+\texttt{allocator<char>}类也是一个特化类，不过其运行时给字符串进行空间的分配和回收。这对于现在的我们来说并不重要，我们只使用其默认的方式就好。
+
+当我们想要一个不同的字符串类型是，可以尝试对\texttt{basic\_string}和\texttt{char\_traits}类中提供的方法进行复用。我们实现了两个\texttt{char\_traits}子类：\texttt{case\_insentitive}和\texttt{lower\_caser}类。我们可以将这两个字符串类替换标准\texttt{char\_traits}类型。
+
+\begin{myInfoBox}
+Note： 为了探寻\texttt{basic\_string}适配的可能性，我们需要查询C++ STL文档中关于\texttt{std::char\_traits}的章节，然后去了解还有那些函数需要重新实现。
+\end{myInfoBox}
+
+
+% --- recipe 12: chapter7-12-chinese.md ---
+\section{使用正则表达式库标记输入}
+
+当我们需要使用一些较为复杂的方式解析或转换字符串时，正则表达式是个不错的选择。因为非常好用，很多编程语言中都会内置正则表达式。
+
+如果你还对正则表达式不太了解，可以去维基百科的相关页面进行了解。我相信其会扩展你的视野，正则表达式对于文本解析来说十分好用。正则表达式能用来检查一个电子邮件或IP地址是否合法，也能从长字符串中找到对应的子字符串等等。
+
+本节中，我们将提取HTML文件中的链接，并且将这些链接为使用者罗列出来。因为正则表达式在C++11标准中正式加入C++ STL，所以例程很短。
+
+\mySmallsection{How to do it...}
+
+我们将定义一个正则表达式来检测链接，并且将其作用于一个HTML文件，并将获得的链接打印出来：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iterator>
+#include <regex>
+#include <algorithm>
+#include <iomanip>
+using namespace std; 
+\end{codebox}
+
+\item 在后面将会生成一段可迭代器的区间，这个区间中只包含字符串。这里会以链接地址字符串和链接描述字符串配对出现。因此，我们也要写一个辅助函数来打印这些字符串：
+
+\begin{codebox}[cpp]
+template <typename InputIt>
+void print(InputIt it, InputIt end_it)
+{
+    while (it != end_it) {
+\end{codebox}
+
+\item 每次循环中，我们对迭代器增加了两次，这是因为要对链接地址和链接描述进行拷贝。两个迭代器解引用间，我们添加了一个if条件，为了保证程序的安全，这个条件句会检查迭代器是否过早的到达了最后：
+
+\begin{codebox}[cpp]
+        const string link {*it++};
+        if (it == end_it) { break; }
+        const string desc {*it++};
+\end{codebox}
+
+\item 现在我们就可以对链接和其描述进行打印：
+
+\begin{codebox}[cpp]
+        cout << left << setw(28) << desc
+            << " : " << link << '\n';
+    }
+}
+\end{codebox}
+
+\item 主函数中，我们将从标准输入中获取所要读取的数据。这样，需要将全部标准输入通过一个输入流迭代器构造为一个字符串。为了避免符号化，为了确保我们所得到的输入与用户输入的一样，我们使用了\texttt{noskipws}控制符。这个控制符将会禁用空格跳过和符号化：
+
+\begin{codebox}[cpp]
+int main()
+{
+    cin >> noskipws;
+    const std::string in {
+        istream_iterator<char>{cin}, {} 
+    };
+\end{codebox}
+
+\item 现在我们需要定义一个正则表达式，来对HTML文件进行查找。小括号在正在表达式中代表的是组，这里我们要获取我们想要访问的链接——其为URL地址，并且还要获取其描述：
+
+\begin{codebox}[cpp]
+    const regex link_re {
+        "<a href=\"([^\"]*)\"[^<]*>([^<]*)</a>"};
+\end{codebox}
+
+\item \texttt{sregex\_token\_iterator}类具有相同的功能，并且能对\texttt{istream\_iterator}直接操作。我们将可迭代的输入范围和刚刚定义的正则表达式传给它。不过，这里还有第三个参数\texttt{\{1, 2\}}。其表示我们想要表达式组1和组2中的结果：
+
+\begin{codebox}[cpp]
+    sregex_token_iterator it {
+        begin(in), end(in), link_re, {1, 2}
+    };
+\end{codebox}
+
+\item 现在我们有一个迭代器，如果找到了连接，其会返回连接地址和相应的描述。这里对第二个参数直接进行初始化，其类型与第一个参数类型相同，然后传入我们之前实现的\texttt{print}函数中：
+
+\begin{codebox}[cpp]
+    print(it, {});
+}
+\end{codebox}
+
+\item 编译并运次那个程序，就会得到如下的输出。我们使用curl获取ISO C++首页的信息，其会将HTML页面直接从网上下载下来。当然，这里也能写成\texttt{ cat some\_html\_file.html | ./link\_extraction }。正则表达式可以很方便对硬编码进行解析，通过HTML固定的格式对其进行解析。当然，你可以让其变得更加通用：
+
+\begin{codebox}[cpp]
+$ curl -s "https://isocpp.org/blog" | ./link_extraction
+Sign In / Suggest an Article : https://isocpp.org/member/login
+Register : https://isocpp.org/member/register
+Get Started! : https://isocpp.org/get-started
+Tour : https://isocpp.org/tour
+C++ Super-FAQ: https://isocpp.org/faq
+Blog : https://isocpp.org/blog
+Forums : https://isocpp.org/forums
+Standardization: https://isocpp.org/std
+About: https://isocpp.org/about
+Current ISO C++ status : https://isocpp.org/std/status
+(...and many more...)
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+正则表达式非常有用，看起来好像特别神秘，但值得学习。一个短小的表达式就能节省对我们多行的代码进行手动匹配的时间。
+
+本节中，我们第一次实例化了一个正则类型的对象。我们使用一个用于描述的字符串对正则表达式进行构造。最简单的正则表达式是"."，其会对每个字符进行匹配，因为它是正则表达式的通配符。表达式为"a"时，其就只会对'a'字符进行匹配。表达式为"ab*"时，其表示"只有一个a，和零个或若干个b"，以此类推。正则表达式本身是一个很大的主题，维基百科和一些教学网站，还有一些学术论文中，对其都有非常详尽的描述。
+
+让我们来看一下本节中的正则表达式，是如何对HTML连接进行匹配的。一个简单HTML连接可写为\texttt{ <a href="some\_url.com/foo">A great link</a> }。我们只需要\texttt{some\_url.com/foo}和\texttt{A great link}部分。所以，我们可以使用如下的正则表达式进行匹配，其会将字符串对应每个组，从而分解成多个字符串：
+
+\myGraphic{0.9}{images/chapter7/7-12-1.png}{}
+
+字符串本身为\textbf{第0组}，也就是整个字符串。引号中\texttt{href}的URL地址部分分在\textbf{第1组}中。正则表达式中，使用小括号来定义组，所以这个表达式中有两个组。另一个组则获取的是连接描述。
+
+有很多STL函数可以接受正则对象，不过直接使用一个正则字符迭代器适配器，其是对使用\texttt{std::regex\_search}进行自动化匹配的高阶抽象。我们可用如下的代码对其进行实例化：
+
+\begin{codebox}[cpp]
+sregex_token_iterator it {begin(in), end(in), link_re, {1, 2}};
+\end{codebox}
+
+开始和结束部分表示我们的输入字符串，正则迭代器则在该字符串上进行迭代，并匹配所有链接。\texttt{link\_re}则为用于匹配连接的正则表达式，\texttt{\{1, 2\}}可用来表示我们需要的部分。其第一组匹配的是我们想要的连接，进行自增后，就到了第二组，匹配的则是我们想要的连接描述，依次循环。其能非常智能的帮助我们对多行数据进行处理。
+
+让我们来看另一个例子，以确保我们明白了上面的内容。让我们创建一个正则表达式\texttt{"a(b*)(c*)"}。其会对具有一个'a'字符，之后有或没有'b'字符，再之后有或没有'c'字符的字符串进行匹配：
+
+\begin{codebox}[cpp]
+const string s {" abc abbccc "};
+const regex re {"a(b*)(c*)"};
+
+sregex_token_iterator it {
+    begin(s), end(s), re, {1, 2} 
+};
+
+print( *it ); // prints b
+++it;
+print( *it ); // prints c
+++it;
+print( *it ); // prints bb
+++it;
+print( *it ); // prints ccc
+\end{codebox}
+
+当然也可以使用\texttt{std::regex\_iterator}类，其会将匹配的子字符串进行直接输出。
+
+
+% --- recipe 13: chapter7-13-chinese.md ---
+\section{简单打印不同格式的数字}
+
+之前的章节中，我们已经了解如何打印出带格式的输出，同时也意识到了两点：
+
+\begin{itemize}
+\item 输入输出控制符是有粘性的，所以当我们要临时使用的时候，需要在用完之后进行还原。
+
+\item 其控制符和较少的要打印的对象相比，会显得很冗长。
+
+\end{itemize}
+
+这些原因导致一些开发者使用C++的时候，还是依旧使用\texttt{printf}进行打印输出。
+
+本节，我们将来看一下如何不用太多代码就能进行很好的类型打印。
+
+\mySmallsection{How to do it...}
+
+我们会先来实现一个类\texttt{format\_guard}，其会自动的将打印格式进行恢复。另外，我们添加了一个包装类型，其可以包含任意值，当对其进行打印时，其能使用相应的格式进行输出，而无需添加冗长的控制符：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <iomanip>
+using namespace std; 
+\end{codebox}
+
+\item 辅助类在调用\texttt{format\_guard}时，其会对输出流的格式进行清理。其构造函数保存了格式符，也就是在这里对\texttt{std::cout}进行设置。析构函数会将这些状态进行去除，这样就不会后续的打印有所影响：
+
+\begin{codebox}[cpp]
+class format_guard {
+    decltype(cout.flags()) f {cout.flags()};
+public:
+    ~format_guard() { cout.flags(f); }
+};
+\end{codebox}
+
+\item 定义另一个辅助类\texttt{scientific\_type}。因为其是一个模板类，所以其能拥有任意类型的成员变量。这个类没有其他任何作用：
+
+\begin{codebox}[cpp]
+template <typename T>
+struct scientific_type {
+    T value;
+    explicit scientific_type(T val) : value{val} {}
+};
+\end{codebox}
+
+\item 封装成\texttt{scientific\_type}之后，可以对任意类型进行自定义格式设置，当对\texttt{operator>>}进行重载后，输出流就会在执行时，运行完全不同的代码。这样就能在使用科学计数法表示浮点数时，以大写的格式，并且其为正数时，数字前添加'+'号。我们也会在跳出函数时，使用\texttt{format\_guard}类对打印格式进行清理：
+
+\begin{codebox}[cpp]
+template <typename T>
+ostream& operator<<(ostream &os, const scientific_type<T> &w) {
+    format_guard _;
+    os << scientific << uppercase << showpos;
+    return os << w.value;
+}
+\end{codebox}
+
+\item 主函数中，我们将使用到\texttt{format\_guard}类。我们会创建一段新的代码段，首先对类进行实例化，并且对\texttt{std::cout}进行输出控制符的设置：
+
+\begin{codebox}[cpp]
+int main()
+{
+    {
+        format_guard _;
+        cout << hex << scientific << showbase << uppercase;
+        cout << "Numbers with special formatting:\n";
+        cout << 0x123abc << '\n';
+        cout << 0.123456789 << '\n';
+    }
+\end{codebox}
+
+\item 使用控制符对这些数字进行打印后，跳出这个代码段。这时\texttt{format\_guard}的析构函数会将格式进行清理。为了对清理结果进行测试，会再次打印相同的数字。其将会输出不同的结果：
+
+\begin{codebox}[cpp]
+    cout << "Same numbers, but normal formatting again:\n";
+    cout << 0x123abc << '\n';
+    cout << 0.123456789 << '\n';
+\end{codebox}
+
+\item 现在使用\texttt{scientific\_type}，将三个浮点数打印在同一行。我们将第二个数包装成\texttt{scientific\_type}类型。这样其就能按照我们指定的风格进行打印，不过在之前和之后的输出都是以默认的格式进行。与此同时，我们也避免了冗长的格式设置代码：
+
+\begin{codebox}[cpp]
+    cout << "Mixed formatting: "
+        << 123.0 << " "
+        << scientific_type{123.0} << " "
+        << 123.456 << '\n';
+}
+\end{codebox}
+
+\item 编译并运行程序，我们就会得到如下的输出。前两行按照我们的设定进行打印。接下来的两行则是以默认的方式进行打印。这样就证明了我们的\texttt{format\_guard}类工作的很好。最后三个数在一行上，也是和我们的期望一致。只有中间的数字是\texttt{scientific\_type}类型的，前后两个都是默认类型：
+
+\begin{codebox}[cpp]
+$ ./pretty_print_on_the_fly
+Numbers with special formatting:
+0X123ABC
+1.234568E-01
+Same numbers, but normal formatting again:
+1194684
+0.123457
+Mixed formatting: 123 +1.230000E+02 123.456
+\end{codebox}
+
+\end{enumerate}
+
+
+% --- recipe 14: chapter7-14-chinese.md ---
+\section{从std::iostream错误中获取可读异常}
+
+本书之前的章节中，我们还没对异常进行过捕获。不过对于流对象不会抛出异常，所以很容易使用。当我们想要解析10个数，不过解析过程在中途失败了，那么流对象将会将自身设置为失败状态，并且不会继续对数字进行解析。这样，我们就不会让程序处于危险当中。我们可以将解析过程转换为一个条件变量，比如\texttt{if (cin >> foo >> bar >> ...)}。如果这个判断失败了，那我们将对输入进行处理。所以，这里并不会出现\texttt{try-catch}代码块。
+
+实际上，之前的C++输入输出流是会抛出异常的。异常这个特性是不是一开始就有的，所以这也可能是流对象库并不是第一个支持异常特性的原因。
+
+为了对流使用异常，我们必须对每个流对象单独进行配置，让其在失败的时候抛出一个异常。不幸的是，我们可以对对象的异常进行捕获，但是这步并没有标准化。这就导致我们无法获得有效的错误信息，我们将在后续的实例中看到。如果我们很想对流对象使用异常，那么可以使用C库中有关文件系统错误状态，来获取更多的信息。
+
+本节中，我们将会通过不同的方式，让程序运行失败，然后来处理这些异常，并且了解如何获取更多的有效信息。
+
+\mySmallsection{How to do it...}
+
+我们将会让程序打开一个文件(这个过程可能会失败)，并且将会从文件中读取一个整型数字(也可能会失败)。我们可以通过激活异常的方式来发现错误，然后再来看如何对这些错误进行处理：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <fstream>
+#include <system_error>
+#include <cstring>
+using namespace std;  
+\end{codebox}
+
+\item 当我们要将流对象和异常一起使用时，首先需要启动异常。为了获取一个文件流对象，在指定文件并不存在时，抛出一个异常；或是在解析错误时，我们需要将对应的失败原因设置到异常掩码的对应位上。当执行失败的时候，将触发一个异常。并通过激活的\texttt{failbit}和\texttt{badbit}，我们能让文件系统的错误抛出异常，并对这个错误进行解析：
+
+\begin{codebox}[cpp]
+int main()
+{
+    ifstream f;
+    f.exceptions(f.failbit | f.badbit); 
+\end{codebox}
+
+\item 现在可以使用\texttt{try}块进行对文件的访问。文件打开成功，那我们将继续读取文件中的整型数字。并且，只有在读取数字成功的情况下，我们才会对数字进行打印：
+
+\begin{codebox}[cpp]
+try {
+    f.open("non_existant.txt");
+    int i;
+    f >> i;
+    cout << "integer has value: " << i << '\n';
+}
+\end{codebox}
+
+\item 对于可能发生的两种错误，一个\texttt{std::ios\_base::failure}实例将会抛出。这个对象有一个\texttt{what()}成员函数，其会为我们解释触发了哪种异常。不幸的是，并不存在标准化的信息，所以我们不会得到太多有用的信息。不过，我们至少可以区分，触发异常的是一个文件系统问题，还是一个格式解析问题。全局变量\texttt{errno}，其在C++诞生前就存在，其会设置为一个错误值，可供我们进行查看。\texttt{strerror}函数会将一个错误值，翻译为我们可以读懂的字符串。当\texttt{errno}是0时，就代表文件系统没有任何错误：
+
+\begin{codebox}[cpp]
+    catch (ios_base::failure& e) {
+        cerr << "Caught error: ";
+        if (errno) {
+            cerr << strerror(errno) << '\n';
+        } else {
+            cerr << e.what() << '\n';
+        }
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，两种错误可能都会在运行时发生。当文件不存在时，我们就不可能从文件中获取数值，所以我们会得到一个\texttt{iostream\_category}错误信息：
+
+\begin{codebox}[cpp]
+$ ./readable_error_msg
+Caught error: ios_base::clear: unspecified iostream_category
+\end{codebox}
+
+\item 如果文件不存在， \texttt{strerror(errno)}将会返回不同的错误信息：
+
+\begin{codebox}[cpp]
+$ ./readable_error_msg
+Caught error: No such file or directory
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+我们可以通过\texttt{ s.exceptions(s.failbit | s.badbit) }使能流对象s抛出异常的能力。不过，这也就意味着有些情况无法使用异常，例如\texttt{std::ifstream}的实例需要打开一个文件进行构造，所以我们不能在之后对异常进行设置。
+
+\begin{codebox}[cpp]
+ifstream f {"non_existant.txt"};
+f.exceptions(...); // too late for an exception
+\end{codebox}
+
+这就十分遗憾了，因为异常处理与原始C风格的方式进行对比，无需被\texttt{if}困扰，其每一步都是在处理异常。
+
+当我们使用各种方法让流处于失败的状态，就会发现抛出的这些异常并没有什么区别。这样只需要了解何时捕获错误，而非捕获了什么错误(对于流是这样，而对于STL中的其他类型就不是了)，这也就是为什么我们要对\texttt{errno}的值进行检查的原因。这个全局变量在C++和异常诞生之前，就已经存在了。
+
+如果有任何与系统相关的函数发生了错误，其会将\texttt{errno}设置为除0之外的其他值(0代表没有错误)，然后调用者可以通过对\texttt{errno}值的查询，来了解到底出现了什么问题。这个问题我们在多线程程序会经常遇到，并且所有线程都会对一个全局变量进行修改，那么当出现错误了，是哪个线程造成的呢？幸运的是，这个设计已经在C++11中进行了修改，每个线程都只能看到属于自己的\texttt{erron}变量。
+
+对于原始的错误处理方式，我们就不进行详细的描述了，不过其能为我们提供额外有用的信息，比如流对象触发了基于系统的异常。异常会告诉我们发生了什么，而\texttt{erron}则会告诉我们会发生哪种级别的错误。
+
+

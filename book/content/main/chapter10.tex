@@ -1,0 +1,1086 @@
+% chapterintro
+% ==============================
+% 第10章 导言：chapter10-0-chinese.md
+如果没有第三方库来帮助我们处理系统路径，那么对文件系统的编程就会非常冗余，因为我们需要处理很多的条件。
+
+有些路径是绝对路径，而有些是相对路径，有时候路径还会互相包含。\texttt{.}表示当前目录，\texttt{..}表示上级目录。然后，不同系统用来分隔目录的斜杠也不同，Linux, MacOS和各种UNIX变体操作系统上使用的是\texttt{/}，而Windows下使用的是\texttt{\textbackslash{}}，这样就会导致文件的不同。
+
+因为有时程序难免要实现和文件系统相关的功能，所以C++17的STL中添加了对文件系统友好的库。其好的一点就在于可移植性，所以在一个系统中写好后，就可以在不同的系统间运行。
+
+本章中，我们会了解到\texttt{path}类是如何工作的，因为其是库中最重要的角色。而后，我们将会了解到，强大但简单的\texttt{directory\_iterator}和\texttt{recursive\_directory\_iterator}类，其会对文件操作很有帮助。最后，我们将通过一些小并简单的式例工具来完成一些与文件系统相关的任务。对简单的工具有所了解后，大家就可以构建更加复杂的工具了。
+
+
+% --- recipe 1: chapter10-1-chinese.md ---
+\section{实现标准化路径}
+
+本节中我们通过一个非常简单的例子来了解\texttt{std::filesystem::path}类，并实现一个智能标准化系统路径的辅助函数。
+
+本节中的例子可以在任意的文件系统中使用，并且返回一种标准化格式的路径。标准化就意味着获取的是绝对路径，路径中不包括\texttt{.}和\texttt{..}。
+
+实现函数的时候，我们将会了解，当使用文件系统库的基础部分时，需要注意哪些细节。
+
+\mySmallsection{How to do it...}
+
+本节中，我们的程序可以从命令行参数中获得文件系统路径，并使用标准化格式进行打印：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 主函数中，会对命令行传入的参数进行检查。如果没有传入，我们将会直接返回，并在终端上打印程序具体的使用方式。当提供了一个路径，那我们将用其对\texttt{filesystem::path}对象进行实例化：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    if (argc != 2) {
+        cout << "Usage: " << argv[0] << " <path>\n";
+        return 1;
+    }
+    const path dir {argv[1]};
+\end{codebox}
+
+\item 实例化\texttt{path}对象之后，还不能确定这个路径是否真实存在于计算机的文件系统中。这里我们使用了\texttt{ filesystem::exists}来确认路径。如果路径不存在，我们会再次返回：
+
+\begin{codebox}[cpp]
+    if (!exists(dir)) {
+        cout << "Path " << dir << " does not exist.\n";
+        return 1;
+    }   
+\end{codebox}
+
+\item Okay，如果完成了这个检查，我们就能确定这是一个正确的路径，并且将会对这个路径进行标准化，然后将其进行打印。\texttt{ filesystem::canonical}将会为我们返回另一个\texttt{path}对象，可以直接对其进行打印，不过\texttt{path}的\texttt{<<}重载版本会将双引号进行打印。为了去掉双引号，我们通过\texttt{.c\_str()}或\texttt{.string()}方法对路径进行打印：
+
+\begin{codebox}[cpp]
+    cout << canonical(dir).c_str() << '\n';
+}
+\end{codebox}
+
+\item 编译代码并运行。当我们在家目录下输入相对地址\texttt{"src"}时，程序将会打印出其绝对路径：
+
+\begin{codebox}[cpp]
+$ ./normalizer src
+/Users/tfc/src
+\end{codebox}
+
+\item 当我们打印一些更复杂的路径时，比如：给定路径中包含桌面文件夹的路径，\texttt{..}，还会有\texttt{Documents}文件夹，然后在到\texttt{src}文件夹。然而，程序会打印出与上次相同的地址！
+
+\begin{codebox}[cpp]
+$ ./normalizer Desktop/../Documents/../src
+/Users/tfc/src
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+作为一个\texttt{std::filesystem }的新手，看本节的代码应该也没有什么问题。通过文件系统路径字符串初始化了一个\texttt{path}对象。\texttt{std::filesystem::path}类为文件系统库的核心，因为库中大多数函数和类与之相关。
+
+\texttt{filesystem::exists}函数可以用来检查给定的地址是否存在。检查文件路径的原因是，\texttt{path}对象中的地址，不确定在文件系统中是否存在。\texttt{exists}能够接受一个\texttt{path}实例，如果地址存在，则返回\texttt{true}。\texttt{exists}无论是相对地址和绝对地址都能够进行判断。
+
+最后，我们使用了\texttt{filesystem::canonical}将给定路径进行标准化。
+
+\begin{codebox}[cpp]
+path canonical(const path& p, const path& base = current_path());
+\end{codebox}
+
+\texttt{canonical}函数能接受一个\texttt{path}对象和一个可选的第二参数，也就是另一个地址。如果\texttt{p}路径是一个相对路径，那么\texttt{base}就是其基础路径。完成这些后，\texttt{canonical}会将\texttt{.}和\texttt{..}从路径中移除。
+
+打印时对标准化地址使用了\texttt{.c\_str()}函数，这样我们打印出来的地址前后就没有双引号了。
+
+\mySmallsection{There's more...}
+
+\texttt{canonical}在对应地址不存在时，会抛出一个\texttt{filesystem\_error}类型的异常。为了避免函数抛出异常，我们需要使用\texttt{exists}函数对提供路径进行检查。这样的检查仅仅就是为了避免函数抛出异常吗？肯定不是。
+
+\texttt{exists} 和\texttt{canonical}函数都能抛出\texttt{bad\_alloc}异常。如果我们遇到了，那程序肯定会失败。更为重要的是，当我们对路径进行标准化处理时，其他人将对应的文件重命名或删除了，则会造成更严重的问题。这样的话，即便是之前进行过检查，\texttt{canonical}还是会抛出一个\texttt{filesystem\_error}异常。
+
+大多数系统函数都会有一些重载，他们能够接受相同的参数，甚至是一个\texttt{ std::error\_code}引用：
+
+\begin{codebox}[cpp]
+path canonical(const path& p, const path& base = current_path());
+path canonical(const path& p, error_code& ec);
+path canonical(const std::filesystem::path& p,
+               const std::filesystem::path& base,
+               std::error_code& ec );
+\end{codebox}
+
+我们可以使用\texttt{try-catch}将系统函数进行包围，手动的对其抛出的异常进行处理。需要注意的是，这里只会改变系统相关错误的动作，而无法对其他进行修改。带或不带\texttt{ec}参数，更加基于异常，例如当系统没有可分配内存时，还是会抛出\texttt{bad\_alloc}异常。
+
+
+% --- recipe 2: chapter10-2-chinese.md ---
+\section{使用相对路径获取规范的文件路径}
+
+上一节中，我们对路径进行了标准化输出。使用了\texttt{filesystem::path}类，并且了解了如何获取路径，并进行检查，以及其他一些原理性的东西。也能帮助我们将字符串组成路径，从而对路径进行再次解析。
+
+\texttt{path}已经将操作系统的一些细节为我们进行了封装，不过我们还是需要了解一些细节。
+
+本节我们也将了解到，如何将绝对路径和相对路径进行合并和分解。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将围绕着相对路径和绝对路径进行，从而了解\texttt{path}类的有时，以及其对应的辅助函数。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 然后，我们实例化一个\texttt{path}对象。不过这次，路径中的文件是否存在就没有那么重要了。这里有些函数，在文件不存在的时候会抛出异常。
+
+\begin{codebox}[cpp]
+int main()
+{
+    path p {"testdir/foobar.txt"};
+\end{codebox}
+
+\item 现在我们来了解一下不同的文件系统库函数。\texttt{current\_path}将返回我们执行程序的路径，也就是工作目录。\texttt{absolute}能接受一个相对地址，就像我们定义的\texttt{p}一样。\texttt{system\_complete}在Linux，MacOS和类UNIX操作系统上与\texttt{absolute}的功能相同。在Windows下我们将获取一个带有盘符(比如\texttt{c:})的绝对地址。\texttt{canonical}与\texttt{absolute}的功能相同，不过其删除了所有的\texttt{.}和\texttt{..}。我们可以使用如下的方式使用这些函数：
+
+\begin{codebox}[cpp]
+cout << "current_path : " << current_path()
+     << "\nabsolute_path : " << absolute(p)
+     << "\nsystem_complete : " << system_complete(p)
+     << "\ncanonical(p) : " << canonical(p)
+     << '\n';
+\end{codebox}
+
+\item \texttt{path}另一个优势在于，其对\texttt{/}操作符进行了重载。通过这种方式我们可以连接文件夹和文件。让我们组合一个，然后进行打印：
+
+\begin{codebox}[cpp]
+    cout << path{"testdir"} / "foobar.txt" << '\n';
+\end{codebox}
+
+\item 我们将\texttt{canonical}与合并的路径一起使用。通过给定\texttt{canonical}一个相对地址，比如\texttt{"foobar.txt"}，和一个合并的绝对地址\texttt{current\_path() / "testdir"}，其将会返回给我们一个绝对地址。在另一个调用中，我们给定我么的路径为\texttt{p}(假设为\texttt{ "testdir/foobar.txt"})，并且通过\texttt{current\_path()}获取当前位置的绝对路径，我们这里就使用\texttt{"testdir" }好了。其结果与\texttt{ current\_path()}相同，因为间接获得了绝对地址。在这两次调用中，\texttt{canonical}将会返回给我们相同的绝对地址：
+
+\begin{codebox}[cpp]
+cout << "canonical testdir : "
+     << canonical("foobar.txt",
+                 current_path() / "testdir")
+     << "\ncanonical testdir 2 : "
+     << canonical(p, current_path() / "testdir/..")
+     << '\n';
+\end{codebox}
+
+\item 我们也可以对两个非标准化的路径进行比较。\texttt{equivalence}能接受两个路径，并在内部将两个路径进行标准化，如果这两个路径相同，就会返回true，否则会返回false。这个例子中，相应的路径必须存在，否则就会抛出一个异常：
+
+\begin{codebox}[cpp]
+    cout << "equivalence: "
+         << equivalent("testdir/foobar.txt",
+                       "testdir/../testdir/foobar.txt")
+         << '\n';
+}
+\end{codebox}
+
+\item 编译并运行代码，将会得到如下的输出。\texttt{current\_path()}会返回我笔记本上的HOME目录，因为我在这个路径下执行的程序。相对路径\texttt{p}会通过 \texttt{absolute\_path}，\texttt{system\_complete}和\texttt{canonical}预先进行准备。我们能看到\texttt{absolute\_path}和\texttt{system\_complete}的结果都一样，因为我使用的是Mac系统。在使用Windows操作系统的机器上，\texttt{system\_complete}将会前置一个\texttt{C:}，或者是工作路径的磁盘盘符：
+
+\begin{codebox}[cpp]
+$ ./canonical_filepath
+current_path: "/Users/tfc"
+absolute_path : "/Users/tfc/testdir/foobar.txt"
+system_complete : "/Users/tfc/testdir/foobar.txt"
+canonical(p): "/Users/tfc/testdir/foobar.txt"
+"testdir/foobar.txt"
+canonical testdir : "/Users/tfc/testdir/foobar.txt"
+canonical testdir 2 : "/Users/tfc/testdir/foobar.txt"
+equivalence: 1
+\end{codebox}
+
+\item 这个简单的程序中，就不对异常进行处理了。当从\texttt{testdir}文件夹中将\texttt{foobar.txt}文件删除时，程序将因为抛出异常的原因而终止。\texttt{canonical}函数需要路径真实存在。还有一个\texttt{weakly\_canonical}，但其不符合我们的要求。
+
+\begin{codebox}[cpp]
+$ ./canonial_filepath
+current_path: "/Users/tfc"
+absolute_path : "/Users/tfc/testdir/foobar.txt"
+system_complete : "/Users/tfc/testdir/foobar.txt"
+terminate called after throwing an instance of
+'std::filesystem::v1::__cxx11::filesystem_error'
+what():filesystem error: cannot canonicalize:
+No such file or directory [testdir/foobar.txt] [/Users/tfc]
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节的目的就是如何快速的组成新的路径。其主要还有通过\texttt{path}类重载的\texttt{/}操作符来完成。另外，文件系统函数的相对路径和绝对路径是一致的，并且路径中包含\texttt{.}和\texttt{..}。
+
+很多函数会返回一个转换或未转换的\texttt{path}实例。我们不会将所有函数都列在这里，如果想要了解它们，去看下C++手册是个不错的选择。
+
+\texttt{path}类中有很多的成员函数，很值得一看。让我们来了解一下，对于一个路径来说，成员函数返回的是哪一部分。下面的图就为我们描述了在Windows和UNIX/Linux下，对应函数所返回的路径：
+
+\myGraphic{0.9}{images/chapter10/10-2-1.png}{}
+
+这样我们就能很容易的了解到，\texttt{path}的那个函数返回的是绝对地址。相对地址中，\texttt{root\_path}，\texttt{root\_name} 和 \texttt{root\_directory}部分都空的。\texttt{relative\_path}将会返回一个相对地址。
+
+
+% --- recipe 3: chapter10-3-chinese.md ---
+\section{列出目录下的所有文件}
+
+每个操作系统都会提供一些工具，以列出目录下的所有文件。Linux，MacOS和类UNIX的操作系统中，\texttt{ls}就是一个最简单的例子。Windows和Dos系统下，命令为\texttt{dir}。其会提供一些文件的补充信息，比如文件大小，访问权限等。
+
+可以通过对文件夹的递归和文件遍历来对这样的工具进行实现。所以，让我们来试一下吧！
+
+我们的\texttt{ls/dir}命令会将目录下的文件名，元素索引，以及一些访问权限标识，以及对应文件的文件大小，分别进行展示。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将实现一个很小的工具，为使用者列出对应文件夹下的所有文件。会将文件名，文件类型，大小和访问权限分别列出来。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <numeric>
+#include <algorithm>
+#include <vector>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item \texttt{file\_info}是我们要实现的一个辅助函数。其能接受一个\texttt{directory\_entry}对象的引用，并从这个路径中提取相应的信息，实例化\texttt{file\_status}对象(使用\texttt{status}函数)，其会包含文件类型和权限信息。最后，如果是一个常规文件，则会提取其文件大小。对于文件夹或一些特殊的文件，我们将返回大小设置为0。所有的信息都将会封装到一个元组中：
+
+\begin{codebox}[cpp]
+static tuple<path, file_status, size_t>
+file_info(const directory_entry &entry)
+{
+    const auto fs (status(entry));
+    return {entry.path(),
+            fs,
+            is_regular_file(fs) ? file_size(entry.path()) : 0u};
+}
+\end{codebox}
+
+\item 另一个辅助函数就是\texttt{type\_char}。路径不能仅表示目录和简单文本/二进制文件。操作系统提供了多种抽象类型，比如字符/块形式的硬件设备接口。STL库也提供了为此提供了很多为此函数。我们通过返回\texttt{'d'}表示文件夹，通过返回\texttt{'f'}表示普通文件等。
+
+\begin{codebox}[cpp]
+static char type_char(file_status fs)
+{
+    if (is_directory(fs)) { return 'd'; }
+    else if (is_symlink(fs)) { return 'l'; }
+    else if (is_character_file(fs)) { return 'c'; }
+    else if (is_block_file(fs)) { return 'b'; }
+    else if (is_fifo(fs)) { return 'p'; }
+    else if (is_socket(fs)) { return 's'; }
+    else if (is_other(fs)) { return 'o'; }
+    else if (is_regular_file(fs)) { return 'f'; }
+    return '?';
+}
+\end{codebox}
+
+\item 下一个辅助函数为\texttt{rwx}。其能接受一个\texttt{perms}变量(其为文件系统库的一个\texttt{enum}类)，并且会返回一个字符串，比如\texttt{rwxrwxrwx}，用来表示文件的权限设置。\texttt{"rwx" }分别为\textbf{r}ead, \textbf{w}rite和e\textbf{x}ecution，分别代表了文件的权限属性。每三个字符表示一个组，也就代表对应的组或成员，能对文件进行的操作。\texttt{rwxrwxrwx}则代表着每个人多能对这个文件进行访问和修改。\texttt{rw-r--r--}代表着所有者可以的对文件进行读取和修改，不过其他人只能对其进行读取操作。我们将这些\texttt{读取/修改/执行}所代表的字母进行组合，就能形成文件的访问权限列表。Lambda表达式可以帮助我们完成重复性的检查工作，检查\texttt{perms}变量\texttt{p}中是否包含特定的掩码位，然后返回\texttt{perms}0或正确的字符。
+
+\begin{codebox}[cpp]
+static string rwx(perms p)
+{
+    auto check ([p](perms bit, char c) {
+        return (p & bit) == perms::none ? '-' : c;
+    });
+    return {check(perms::owner_read, 'r'),
+            check(perms::owner_write, 'w'),
+            check(perms::owner_exec, 'x'),
+            check(perms::group_read, 'r'),
+            check(perms::group_write, 'w'),
+            check(perms::group_exec, 'x'),
+            check(perms::others_read, 'r'),
+            check(perms::others_write, 'w'),
+            check(perms::others_exec, 'x')};
+}
+\end{codebox}
+
+\item 最后一个辅助函数能接受一个整型的文件大小，并将其转换为跟容易读懂的模式。将其大小除以表示的对应边界，然后使用K, M或G来表示这个文件的大小：
+
+\begin{codebox}[cpp]
+static string size_string(size_t size)
+{
+    stringstream ss;
+    if (size >= 1000000000) {
+        ss << (size / 1000000000) << 'G';
+    } else if (size >= 1000000) {
+        ss << (size / 1000000) << 'M';
+    } else if (size >= 1000) {
+        ss << (size / 1000) << 'K';
+    } else { ss << size << 'B'; }
+    return ss.str();
+}
+\end{codebox}
+
+\item 现在来实现主函数。我们会对用户在命令行输入的路径进行检查。如果没有传入，则默认为当前路径。然后，再来检查文件夹是否存在。如果不存在，就不会列出任何文件：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    path dir {argc > 1 ? argv[1] : "."};
+    if (!exists(dir)) {
+        cout << "Path " << dir << " does not exist.\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 现在，将使用文件信息元组来填充一个\texttt{vector}。实例化一个\texttt{directory\_iterator}，并且将其传入\texttt{path}对象的构造函数中。并通过目录迭代器对文件进行迭代，我们将\texttt{directory\_entry}对象转换成文件信息元组，然后将其插入相应的\texttt{vector}。
+
+\begin{codebox}[cpp]
+vector<tuple<path, file_status, size_t>> items;
+transform(directory_iterator{dir}, {},
+    back_inserter(items), file_info);   
+\end{codebox}
+
+\item 现在，将所有文件的信息都存在于\texttt{vector}之中，并且使用辅助函数将其进行打印：
+
+\begin{codebox}[cpp]
+    for (const auto &[path, status, size] : items) {
+        cout << type_char(status)
+             << rwx(status.permissions()) << " "
+             << setw(4) << right << size_string(size)
+             << " " << path.filename().c_str()
+             << '\n';
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，并通过命令行传入C++文档文件所在的地址。我们能了解到对应文件夹所包含的文件，因为文件夹下只有\texttt{'d'}和\texttt{'f'}作为输出的表示。这些文件具有不同的权限，并且都有不同的大小。需要注意的是，这些文件的显示顺序，是按照名字在字母表中的顺序排序，不过我们不依赖这个顺序，因为C++17标准不需要字母表排序：
+
+\begin{codebox}[cpp]
+$ ./list ~/Documents/cpp_reference/en/cpp
+drwxrwxr-x 0B   algorithm
+frw-r--r-- 88K  algorithm.html
+drwxrwxr-x 0B   atomic
+frw-r--r-- 35K  atomic.html
+drwxrwxr-x 0B   chrono
+frw-r--r-- 34K  chrono.html
+frw-r--r-- 21K  comment.html
+frw-r--r-- 21K  comments.html
+frw-r--r-- 220K compiler_support.html
+drwxrwxr-x 0B   concept
+frw-r--r-- 67K  concept.html
+drwxr-xr-x 0B   container
+frw-r--r-- 285K container.html
+drwxrwxr-x 0B   error
+frw-r--r-- 52K  error.html
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节中，我们迭代了文件夹中的所有文件，并且对每个文件的状态和大小进行检查。对于每个文件的操作都非常直接和简单，我们对文件夹的遍历看起来也很魔幻。
+
+为了对我们的文件夹进行遍历，只是对\texttt{directory\_iterator}进行实例化，然后对该对象进行遍历。使用文件系统库来遍历一个文件夹是非常简单的。
+
+\begin{codebox}[cpp]
+for (const directory_entry &e : directory_iterator{dir}) {
+    // do something
+}
+\end{codebox}
+
+除了以下几点，\texttt{directory\_iterator}也没有什么特别的：
+
+\begin{itemize}
+\item 会对文件夹中的每个文件访问一次
+
+\item 文件中元素的遍历顺序未指定
+
+\item 文件节元素中\texttt{.}和\texttt{..}都已经被过滤掉
+
+\end{itemize}
+
+不过，\texttt{directory\_iterator}看起来是一个迭代器，并且同时具有一个可迭代的范围。为什么需要注意这个呢？对于简单的\texttt{for}循环来说，其需要一个可迭代的范围。本节例程中，我们会将其当做一个迭代器使用：
+
+\begin{codebox}[cpp]
+transform(directory_iterator{dir}, {},
+         back_inserter(items), file_info);
+\end{codebox}
+
+实际上，就是一个迭代器类型，只不过这个类将\texttt{std::begin}和\texttt{std::end}函数进行了重载。当调用\texttt{begin}和\texttt{end}时，其会返回相应的迭代器。虽说第一眼看起来比较奇怪，但是让这个类型的确更加有用。
+
+
+% --- recipe 4: chapter10-4-chinese.md ---
+\section{实现一个类似grep的文本搜索工具}
+
+大多数操作系统都会提供本地的搜索引擎。用户可以使用一些快捷键，对本地文件进行查找。
+
+这种功能出现之前，命令行用户会通过\texttt{grep}或\texttt{awk}工具对文件进行查找。用户可以简单的输入\texttt{ grep -r foobar . }，然后工具将会基于当前目录，进行递归的的查找，并显示包含有\texttt{"foobar"}名字的文件。
+
+本节中，将实现这样一种应用。我们的\texttt{grep}使用命令行方式使用，并基于给定文件夹递归的对文件进行查找。然后，将找到的文件名打印出来。我们将使用线性的模式匹配方式，将匹配文件中的对应行号进行打印。
+
+\mySmallsection{How to do it...}
+
+我们将实现小工具，用于查找与用户提供的文本段匹配的文件。这工具与UNIX中的\texttt{grep}工具类似，不过为了简单起见，其功能没有那么强大：
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <fstream>
+#include <regex>
+#include <vector>
+#include <string>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 先来实现一个辅助函数，这个函数能接受一个文件地址和一个正则表达式对象，正则表达式对象用来描述我们要查找的文本段。然后，实例化一个\texttt{vector}，用于保存匹配的文件行和其对应的内容。然后，实例化一个输入文件流对象，读取文件，并进行逐行的文本匹配。
+
+\begin{codebox}[cpp]
+static vector<pair<size_t, string>>
+matches(const path &p, const regex &re)
+{
+    vector<pair<size_t, string>> d;
+    ifstream is {p.c_str()};
+\end{codebox}
+
+\item 通过\texttt{getline}函数对文件进行逐行读取，当字符串中包含有我们提供文本段，则\texttt{regex\_search}返回true，如果匹配会将字符串和对应的行号保存在\texttt{vector}中。最后，我们将返回所有匹配的结果：
+
+\begin{codebox}[cpp]
+    string s;
+    for (size_t line {1}; getline(is, s); ++line) {
+        if (regex_search(begin(s), end(s), re)) {
+            d.emplace_back(line, move(s));
+        }
+    }
+    return d;
+}
+\end{codebox}
+
+\item 主函数会先对用户提供的文本段进行检查，如果这个文本段不能用，则返回错误信息：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    if (argc != 2) {
+        cout << "Usage: " << argv[0] << " <pattern>\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 接下来，会通过输入文本创建一个正则表达式对象。如果表达式是一个非法的正则表达式，这将会导致一个异常抛出。如果触发了异常，我们将对异常进行捕获并处理：
+
+\begin{codebox}[cpp]
+regex pattern;
+try { pattern = regex{argv[1]}; }
+catch (const regex_error &e) {
+    cout << "Invalid regular expression provided.n";
+    return 1;
+}
+\end{codebox}
+
+\item 现在，可以对文件系统进行迭代，然后对我们提供的文本段进行匹配。使用\texttt{recursive\_directory\_iterator}对工作目录下的所有文件进行迭代。原理和之前章节的\texttt{directory\_iterator}类似，不过会对子目录进行递归迭代。对于每个匹配的文件，我们都会调用辅助函数\texttt{matches}：
+
+\begin{codebox}[cpp]
+    for (const auto &entry :
+            recursive_directory_iterator{current_path()}) {
+        auto ms (matches(entry.path(), pattern));
+\end{codebox}
+
+\item 如果有匹配的结果，我们将会对文件地址，对应文本行数和匹配行的内容进行打印：
+
+\begin{codebox}[cpp]
+    for (const auto &[number, content] : ms) {
+        cout << entry.path().c_str() << ":" << number
+             << " - " << content << '\n';
+        }
+    }
+}
+\end{codebox}
+
+\item 现在，准备一个文件\texttt{foobar.txt}，其中包含一些测试行：
+
+\begin{codebox}[cpp]
+foo
+bar
+baz
+\end{codebox}
+
+\item 编译并运行程序，就会得到如下输出。我们在\texttt{/Users/tfc/testdir}文件夹下运行这个程序，我们先来对\texttt{bar}进行查找。在这个文件夹下，其会在\texttt{foobar.txt}的第二行和\texttt{testdir/dir1}文件夹下的另外一个文件\texttt{text1.txt}中匹配到：
+
+\begin{codebox}[cpp]
+$ ./grepper bar
+/Users/tfc/testdir/dir1/text1.txt:1 - foo bar bla blubb
+/Users/tfc/testdir/foobar.txt:2 - bar
+\end{codebox}
+
+\item 再次运行程序，这次我们对\texttt{baz}进行查找，其会在第三行找到对应内容：
+
+\begin{codebox}[cpp]
+$ ./grepper baz
+/Users/tfc/testdir/foobar.txt:3 - baz
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节的主要任务是使用正则表达式对文件的内容进行查找。不过，让我们关注一下\texttt{recursive\_directory\_iterator}，因为我们会使用这个迭代器来进行本节的子文件夹的递归迭代。
+
+与\texttt{directory\_iterator}和\texttt{recursive\_directory\_iterator}迭代类似，其可以用来对子文件夹进行递归，就如其名字一样。当进入文件系统中的一个文件夹时，将会产生一个\texttt{directory\_entry}实例。当递归到子文件夹时，也会产生对应的\texttt{directory\_entry}实例。
+
+\texttt{recursive\_directory\_iterator}具有一些有趣的成员函数：
+
+\begin{itemize}
+\item \texttt{depth()}代表我们需要迭代多少层子文件夹。
+
+\item \texttt{recursion\_pending()}代表在进行当前迭代器后，是否会在进行对子文件夹进行迭代。
+
+\item \texttt{disable\_recursion\_pending()}当迭代器需要再对子文件夹进行迭代时，提前调用这个函数，则会让递归停止。
+
+\item \texttt{pop()}将会终止当前级别的迭代，并返回上一级目录。
+
+\end{itemize}
+
+\mySmallsection{There's more...}
+
+我们需要了解的另一个就是\texttt{directory\_options}枚举类。\texttt{recursive\_directory\_iterator}能将\texttt{directory\_options}的实例作为其构造函数的第二个参数，通常将\texttt{ directory\_options::none}作为默认值传入。其他值为：
+
+\begin{itemize}
+\item \texttt{follow\_directory\_symlink}能允许对符号链接的文件夹进行递归迭代。
+
+\item \texttt{skip\_permission\_denied}这会告诉迭代器，是否跳过由于权限错误而无法访问的目录。
+
+\end{itemize}
+
+这两个选项可以通过\texttt{|}进行组合。
+
+
+% --- recipe 5: chapter10-5-chinese.md ---
+\section{实现一个自动文件重命名器}
+
+本节的动机是因为我自己经常需要使用到这样的功能。我们将假日中的照片汇总在一起时，不同朋友的照片和视频都在一个文件夹中，并且每个文件的后缀看起来都不一样。一些JPEG文件有\texttt{.jpg}的扩展，而另一些为\texttt{.jpeg}，还有一些则为\texttt{.JPEG}。
+
+一些人会让文件具有统一的扩展，其会使用一些有用的命令对于所有文件进行重命名。同时，我们会将使用下划线来替代空格。
+
+本节中，我们将试下一个类似的工具，叫做\texttt{renamer}。其能接受一些列输入文本段，作为其替代，类似如下的方式：
+
+\begin{codebox}[cpp]
+$ renamer jpeg jpg JPEG jpg
+\end{codebox}
+
+本节中，重命名器将会对当前目录进行递归，然后找到文件后缀为\texttt{jpeg}和\texttt{JPEG}的所有文件，并将这些文件的后缀统一为\texttt{jpg}。
+
+\mySmallsection{How to do it...}
+
+我们将实现一个工具，通过对文件夹的递归对于所有文件名匹配的文件进行重命名。所有匹配到的文件，都会使用用户提供的文本段进行替换。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <regex>
+#include <vector>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 我们将实现一个简单的辅助函数，其能接受一个使用字符串表示的输入文件地址和一组替换对。每一个替换对都有一个文本段和其要替换文本段。对替换范围进行循环时，我们使用了\texttt{regex\_replace}用于对输入字符串进行匹配，然后返回转换后的字符串。之后，我们将返回结果字符串。
+
+\begin{codebox}[cpp]
+template <typename T>
+static string replace(string s, const T &replacements)
+{
+    for (const auto &[pattern, repl] : replacements) {
+        s = regex_replace(s, pattern, repl);
+    }
+    return s;
+}
+\end{codebox}
+
+\item 主函数中，我们首先对命令行的正确性进行检查。可以成对的接受命令行参数，因为我们想要匹配段和替换段相对应。\texttt{argv}的第一个元素为执行文件的名字。当用户提供了成对的匹配段和替换段时，\texttt{argc}肯定是大于3的奇数：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    if (argc < 3 || argc % 2 != 1) {
+        cout << "Usage: " << argv[0]
+             << " <pattern> <replacement> ...\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 我们对输入对进行检查时，会将对应的\texttt{vector}进行填充：
+
+\begin{codebox}[cpp]
+vector<pair<regex, string>> patterns;
+for (int i {1}; i < argc; i += 2) {
+    patterns.emplace_back(argv[i], argv[i + 1]);
+}
+\end{codebox}
+
+\item 现在，可以对整个文件系统进行遍历。简单起见，将当前目录作为遍历的默认起始地址。对于每一个文件夹入口，我们将其原始路径命名为\texttt{opath}。然后，只在没有剩余路径的情况下使用文件名，并根据之前创建的匹配列表，对对应的匹配段进行替换。我们将拷贝\texttt{opath}到\texttt{rpath}中，并且将文件名进行替换。
+
+\begin{codebox}[cpp]
+ for (const auto &entry :
+        recursive_directory_iterator{current_path()}) {
+                path opath {entry.path()};
+            string rname {replace(opath.filename().string(),
+            patterns)};
+     path rpath {opath};
+     rpath.replace_filename(rname);
+\end{codebox}
+
+\item 对于匹配的文件，我们将打印其重命名后的名字。当重命名后的文件存在，我们将不会对其进行处理。会跳过这个文件。当然，我们也可以添加一些数字或其他字符到地址中，从而解决这个问题：
+
+\begin{codebox}[cpp]
+        if (opath != rpath) {
+            cout << opath.c_str() << " --> "
+                << rpath.filename().c_str() << '\n';
+            if (exists(rpath)) {
+                cout << "Error: Can't rename."
+                    " Destination file exists.\n";
+            } else {
+                rename(opath, rpath);
+            }
+        }
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，我们将会得到如下的输出。我的文件夹下面有一些JPEG文件，但是都是以不同的后缀名结尾，有\texttt{jpg}，\texttt{jpeg}和\texttt{JPEG}。然后，执行程序将\texttt{jpeg}和\texttt{JPEG}替换成\texttt{jpg}。这样，就可以对文件名进行统一化。
+
+\begin{codebox}[cpp]
+$ ls
+birthday_party.jpeg holiday_in_dubai.jpgholiday_in_spain.jpg
+trip_to_new_york.JPEG
+$ ../renamer jpeg jpg JPEG jpg
+/Users/tfc/pictures/birthday_party.jpeg --> birthday_party.jpg
+/Users/tfc/pictures/trip_to_new_york.JPEG --> trip_to_new_york.jpg
+$ ls
+birthday_party.jpg holiday_in_dubai.jpg holiday_in_spain.jpg
+trip_to_new_york.jpg
+\end{codebox}
+
+\end{enumerate}
+
+
+% --- recipe 6: chapter10-6-chinese.md ---
+\section{实现一个磁盘使用统计器}
+
+我们已经实现了一个列出文件夹下所有文件的工具，不过和系统自带的工具一样，其都不会对文件夹的大小进行打印。
+
+为了获取文件夹的大小，我们需要将其子文件夹进行迭代，然后将其包含的所有文件的大小进行累加，才能得到该文件夹的大小。
+
+本节中，我们将实现一个工具用来做这件事。这个工具能在任意的文件夹下运行，并且对文件夹中包含的文件总体大小进行统计。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将会实现一个程序用于迭代目录中的所有文件，并将所有文件的大小进行统计。对于统计一个文件的大小就很简单，但是要统计一个文件夹的大小，就需要将文件夹下的所有文件的大小进行相加。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <numeric>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 我们将实现一个辅助函数使用\texttt{directory\_entry}对象作为其参数，然后返回其在文件系统中对应的大小。如果传入的不是一个文件夹地址，将通过\texttt{file\_size}获得文件的大小。
+
+\begin{codebox}[cpp]
+static size_t entry_size(const directory_entry &entry)
+{
+    if (!is_directory(entry)) { return file_size(entry); }
+\end{codebox}
+
+\item 如果传入的是一个文件夹，需要对其中所有元素进行文件大小的计算。需要调用辅助函数\texttt{entry\_size}对子文件夹进行再次递归：
+
+\begin{codebox}[cpp]
+    return accumulate(directory_iterator{entry}, {}, 0u,
+        [](size_t accum, const directory_entry &e) {
+            return accum + entry_size(e);
+        });
+}
+\end{codebox}
+
+\item 为了具有更好的可读性，本节使用了其他章节中的\texttt{size\_string}函数。
+
+\begin{codebox}[cpp]
+static string size_string(size_t size)
+{
+    stringstream ss;
+    if (size >= 1000000000) {
+        ss << (size / 1000000000) << 'G';
+    } else if (size >= 1000000) {
+        ss << (size / 1000000) << 'M';
+    } else if (size >= 1000) {
+        ss << (size / 1000) << 'K';
+    } else { ss << size << 'B'; }
+    return ss.str();
+}
+\end{codebox}
+
+\item 主函数中，首先就是要检查用户通过命令行提供的文件系统路径。如果没有提供，则默认为当前文件夹。处理之前，我们会检查路径是否存在。
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    path dir {argc > 1 ? argv[1] : "."};
+    if (!exists(dir)) {
+    cout << "Path " << dir << " does not exist.\n";
+        return 1;
+    } 
+\end{codebox}
+
+\item 现在，我们可以对所有的文件夹进行迭代，然后打印其名字和大小：
+
+\begin{codebox}[cpp]
+    for (const auto &entry : directory_iterator{dir}) {
+        cout << setw(5) << right
+             << size_string(entry_size(entry))
+             << " " << entry.path().filename().c_str()
+             << '\n';
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，我们将获得如下的输出。我提供了一个C++离线手册的目录，其当然具有子目录，我们可以用我们的程序对其大小进行统计：
+
+\begin{codebox}[cpp]
+$ ./file_size ~/Documents/cpp_reference/en/
+19M c
+12K c.html
+147M cpp
+17K cpp.html
+22K index.html
+22K Main_Page.html
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+整个程序通过\texttt{file\_size}对普通的文件进行大小的统计。当程序遇到一个文件夹，其将会对子文件夹进行递归，然后通过\texttt{file\_size}计算出文件夹中包含所有文件的大小。
+
+有件事我们需要区别一下，当我们直接调用\texttt{file\_size}时，或需要进行递归时，需要通过\texttt{is\_directory}谓词进行判断。这对于只包含有普通文件和文件夹的文件夹是有用的。
+
+与我们的简单程序一样，程序会在如下的情况下崩溃，因为有未处理的异常抛出：
+
+\begin{itemize}
+\item \texttt{file\_size}只能对普通文件和符号链接有效。否则，会抛出异常。
+
+\item \texttt{file\_size}对符号链接有效，如果链接失效，函数还是会抛出异常。
+
+\end{itemize}
+
+为了让本节的程序更加成熟，我们需要更多的防御性编程，避免遇到错误的文件和手动处理异常。
+
+
+% --- recipe 7: chapter10-7-chinese.md ---
+\section{计算文件类型的统计信息}
+
+上一节中，我们实现了一个用于统计任意文件夹中所有文件大小的工具。
+
+本节中，我们将递归的对文件夹中的文件名后缀进行统计。这样对每种文件类型的文件进行个数统计，并且计算每种文件类型大小的平均值。
+
+\mySmallsection{How to do it...}
+
+本节中将实现一个简单的工具用于对给定的文件夹进行递归，同时对所有文件的数量和大小进行统计，并通过文件后缀进行分组。最后，会对文件夹中具有的文件名扩展进行打印，并打印出有多少个对应类型扩展的文件和文件的平均大小。
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <map>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item \texttt{size\_string}函数已经在上一节中使用过了。这里我们继续使用：
+
+\begin{codebox}[cpp]
+static string size_string(size_t size)
+{
+    stringstream ss;
+    if (size >= 1000000000) {
+        ss << (size / 1000000000) << 'G';
+    } else if (size >= 1000000) {
+        ss << (size / 1000000) << 'M';
+    } else if (size >= 1000) {
+        ss << (size / 1000) << 'K';
+    } else { ss << size << 'B'; }
+    return ss.str();
+}
+\end{codebox}
+
+\item 然后，实现一个函数用于接受一个\texttt{path}对象，并对该路径下的所有文件进行遍历。我们使用一个\texttt{map}来收集所有的信息，用对应的扩展名与总体数量和所有文件的总大小进行统计：
+
+\begin{codebox}[cpp]
+static map<string, pair<size_t, size_t>> ext_stats(const path &dir)
+{
+    map<string, pair<size_t, size_t>> m;
+    for (const auto &entry :
+        recursive_directory_iterator{dir}) {    
+\end{codebox}
+
+\item 如果目录入口是一个目录，我们将跳过这个入口。跳过的意思就是不会对这个目录进行递归操作。\texttt{recursive\_directory\_iterator}可以完成这个工作，但是不需要去查找所有文件夹中的文件。
+
+\begin{codebox}[cpp]
+const path p {entry.path()};
+const file_status fs {status(p)};
+if (is_directory(fs)) { continue; }     
+\end{codebox}
+
+\item 接下来，会对文件的扩展名进行提取。如果文件没有扩展名，就会对其进行忽略：
+
+\begin{codebox}[cpp]
+        const string ext {p.extension().string()};
+        if (ext.length() == 0) { continue; }
+\end{codebox}
+
+\item 接着，计算我们查找到文件的总体大小。然后，将会对\texttt{map}中同一扩展的对象进行聚合。如果对应类型还不存在，创建起来也很容易。我们可以简单的对文件计数进行增加，并且对扩展总体大小进行累加：
+
+\begin{codebox}[cpp]
+    const size_t size {file_size(p)};
+    auto &[size_accum, count] = m[ext];
+    size_accum += size;
+    count += 1;
+}
+\end{codebox}
+
+\item 之后，我们会返回这个\texttt{map}：
+
+\begin{codebox}[cpp]
+    return m;
+}
+\end{codebox}
+
+\item 主函数中，我们会从用户提供的路径中获取对应的路径，或是使用当前路径。当然，需要对地址是否存在进行检查，否则继续下去就没有任何意义：
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    path dir {argc > 1 ? argv[1] : "."};
+    if (!exists(dir)) {
+        cout << "Path " << dir << " does not exist.\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 可以对\texttt{ext\_stats}进行遍历。因为\texttt{map}中的\texttt{accum\_size}元素包含有同类型扩展文件的总大小，然后用其除以总数量，以计算出平均值：
+
+\begin{codebox}[cpp]
+    for (const auto &[ext, stats] : ext_stats(dir)) {
+        const auto &[accum_size, count] = stats;
+        cout << setw(15) << left << ext << ": "
+             << setw(4) << right << count
+             << " items, avg size "
+             << setw(4) << size_string(accum_size / count)
+             << '\n';
+    }
+}
+\end{codebox}
+
+\item 编译并运行程序，我们将会得到如下的输出。我将C++离线手册的地址，作为命令行的参数：
+
+\begin{codebox}[cpp]
+$ ./file_type ~/Documents/cpp_reference/
+.css :2 items, avg size 41K
+.gif :7 items, avg size 902B
+.html: 4355 items, avg size 38K
+.js:3 items, avg size 4K
+.php :1 items, avg size 739B
+.png : 34 items, avg size 2K
+.svg : 53 items, avg size 6K
+.ttf :2 items, avg size 421K
+\end{codebox}
+
+\end{enumerate}
+
+
+% --- recipe 8: chapter10-8-chinese.md ---
+\section{实现一个工具：通过符号链接减少重复文件，从而控制文件夹大小}
+
+很多工具以不同的方式对数据进行压缩。其中最著名的文件压缩算法/格式就是ZIP和RAR。这种工具通过减少文件内部冗余，从而减少文件的大小。
+
+将文件压缩成压缩包外，另一个非常简单的减少磁盘使用率的范式就是删除重复的文件。本节中，我们将实现一个小工具，其会对目录进行递归。递归中将对文件内容进行对比，如果找到相同的文件，我们将对其中一个进行删除。所有删除的文件则由一个符号链接替代，该链接指向目前唯一存在的文件。这种方式可以不通过压缩对空间进行节省，同时对所有的数据能够进行保存。
+
+\mySmallsection{How to do it...}
+
+本节中，将实现一个小工具用来查找那些重复的文件。我们将会删除其中一个重复的文件，并使用符号链接的方式对其进行替换，这样就能减小文件夹的大小。
+
+\begin{myInfoBox}
+Note： 为了对系统数据进行备份，我们将使用STL函数对文件进行删除。一个简单的拼写错误就可能会删除很多并不想删除的文件。
+\end{myInfoBox}
+
+\begin{enumerate}
+\item 包含必要的头文件，并声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <fstream>
+#include <unordered_map>
+#include <filesystem>
+using namespace std;
+using namespace filesystem;
+\end{codebox}
+
+\item 为了查找重复的文件，我们将构造一个哈希表，并对将文件哈希值与其第一次产生的地址相对应。最好的方式就是通过哈希算法，对文件计算出一个MD5或SHA码。为了保证例子的简洁，我们将会把文件读入一个字符串中，然后使用\texttt{hash}函数计算出对应的哈希值：
+
+\begin{codebox}[cpp]
+static size_t hash_from_path(const path &p)
+{
+    ifstream is {p.c_str(),
+        ios::in | ios::binary};
+    if (!is) { throw errno; }
+    string s;
+    is.seekg(0, ios::end);
+    s.reserve(is.tellg());
+    is.seekg(0, ios::beg);
+    s.assign(istreambuf_iterator<char>{is}, {});
+    return hash<string>{}(s);
+}
+\end{codebox}
+
+\item 然后，我们会实现一个哈希表，并且删除重复的文件。其会对当前文件夹和其子文件夹进行遍历：
+
+\begin{codebox}[cpp]
+static size_t reduce_dupes(const path &dir)
+{
+    unordered_map<size_t, path> m;
+    size_t count {0};
+    for (const auto &entry :
+         recursive_directory_iterator{dir}) { 
+\end{codebox}
+
+\item 对于每个文件入口，我们都会进行检查，当其是文件夹时就会跳过。对于每一个文件，我们都会产生一个哈希值，并且尝试将其插入哈希表中。当哈希表已经包含有相同的哈希值，这也就意味着有文件重复了。并且插入操作会终止，\texttt{try\_emplace}所返回的第二个值就是false:
+
+\begin{codebox}[cpp]
+const path p {entry.path()};
+if (is_directory(p)) { continue; }
+const auto &[it, success] =
+    m.try_emplace(hash_from_path(p), p);
+\end{codebox}
+
+\item \texttt{try\_emplace}的返回值将告诉我们，该键是否是第一次插入的。这样我们就能找到重复的，并告诉用户文件有重复的，并将重复的进行删除。删除之后，我们将为重复的文件创建符号链接：
+
+\begin{codebox}[cpp]
+if (!success) {
+    cout << "Removed " << p.c_str()
+         << " because it is a duplicate of "
+         << it->second.c_str() << '\n';
+    remove(p);
+    create_symlink(absolute(it->second), p);
+    ++count;
+}   
+\end{codebox}
+
+\item 对文件系统进行插入后，我们将会返回重复文件的数量：
+
+\begin{codebox}[cpp]
+    }
+    return count;
+}
+\end{codebox}
+
+\item 主函数中，我们会对用户在命令行中提供的目录进行检查。
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    if (argc != 2) {
+        cout << "Usage: " << argv[0] << " <path>\n";
+        return 1;
+    }
+    path dir {argv[1]};
+    if (!exists(dir)) {
+        cout << "Path " << dir << " does not exist.\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 现在我们只需要对\texttt{reduce\_dupes}进行调用，并打印出有多少文件被删除了：
+
+\begin{codebox}[cpp]
+    const size_t dupes {reduce_dupes(dir)};
+    cout << "Removed " << dupes << " duplicates.\n";
+}
+\end{codebox}
+
+\item 编译并运行程序，输出中有一些看起来比较复杂的文件。程序执行之后，我会使用\texttt{du}工具来检查文件夹的大小，并证明这种方法是有效的。
+
+\begin{codebox}[cpp]
+$ du -sh dupe_dir
+1.1Mdupe_dir
+$ ./dupe_compress dupe_dir
+Removed dupe_dir/dir2/bar.jpg because it is a duplicate of
+dupe_dir/dir1/bar.jpg
+Removed dupe_dir/dir2/base10.png because it is a duplicate of
+dupe_dir/dir1/base10.png
+Removed dupe_dir/dir2/baz.jpeg because it is a duplicate of
+dupe_dir/dir1/baz.jpeg
+Removed dupe_dir/dir2/feed_fish.jpg because it is a duplicate of
+dupe_dir/dir1/feed_fish.jpg
+Removed dupe_dir/dir2/foo.jpg because it is a duplicate of
+dupe_dir/dir1/foo.jpg
+Removed dupe_dir/dir2/fox.jpg because it is a duplicate of
+dupe_dir/dir1/fox.jpg
+Removed 6 duplicates.
+$ du -sh dupe_dir
+584Kdupe_dir
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+使用\texttt{create\_symlink}函数在文件系统中链接一个文件，指向另一个地方。这样就能避免重复的文件出现，也可以使用\texttt{create\_hard\_link}设置一些硬链接。硬链接和软连接相比，有不同的技术含义。有些格式的文件系统可能不支持硬链接，或者是使用一定数量的硬链接，指向相同的文件。另一个问题就是，硬链接没有办法让两个文件系统进行链接。
+
+不过，除开实现细节，使用\texttt{create\_symlink}或\texttt{create\_hard\_link}时，会出现一个明显的错误。下面的几行代码中就有一个bug。你能很快的找到它吗？
+
+\begin{codebox}[cpp]
+path a {"some_dir/some_file.txt"};
+path b {"other_dir/other_file.txt"};
+remove(b);
+create_symlink(a, b);
+\end{codebox}
+
+在程序执行的时候，不会发生任何问题，不过符号链接将失效。符号链接将错误的指向\texttt{some\_dir/some\_file.txt}。正确指向的地址应该是\texttt{/absolute/path/some\_dir/some\_file.txt}或\texttt{../some\_dir/some\_file.txt}。\texttt{create\_symlink}使用正确的绝对地址，可以使用如下写法：
+
+\begin{codebox}[cpp]
+create_symlink(absolute(a), b);
+\end{codebox}
+
+\begin{myInfoBox}
+Note： \texttt{create\_symlink}不会对链接进行检查
+\end{myInfoBox}
+
+\mySmallsection{There's more...}
+
+可以看到，哈希函数非常简单。为了让程序没有多余的依赖，我们采用了这种方式。
+
+我们的哈希函数有什么问题呢？有两个问题：
+
+\begin{itemize}
+\item 会将一个文件完全读入到字符串中。如果对于很大的文件来说，这将是一场灾难。
+
+\item C++ 中的哈希函数\texttt{ hash<string>}可能不是这样使用的。
+
+\end{itemize}
+
+要寻找一个更好的哈希函数时，我们需要找一个快速、内存友好、简单的，并且保证不同的文件具有不同的哈希值，最后一个需求可能是最关键的。因为我们使用哈希值了判断两个文件是否一致，当我们认为两个文件一致时，但哈希值不一样，就能肯定有数据受到了损失。
+
+比较好的哈希算法有MD5和SHA(有变体)。为了让我们程序使用这样的函数，可能需要使用OpenSSL中的密码学API。
+
+

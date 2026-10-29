@@ -1,0 +1,1207 @@
+% chapterintro
+% ==============================
+% 第3章 导言：chapter3-0-chinese.md
+迭代器是C++中非常重要的概念。STL旨在打造一组灵活和通用的工具集，迭代器是工具集中重要的一环。不过，有时候迭代器使用起来比较繁琐，所以很多编程人员还是喜欢用C的指针来完成相应的功能。一半的编程人员基本上会放弃使用STL中的迭代器。本章介绍了迭代器，并展示如何让它们很快的工作起来。快速地介绍是不能完全覆盖迭代器强大的功能，但是这种小例子能让你增加对迭代器的好感度。
+
+大多数容器类(除了类似C风格的数组)，可包含一系列的数据项。许多日常任务会处理超大的数据量，这里先不关心如何获得这些数据。不过，如果我们考虑数组和链表，并且想要计算这两种结构所有项的和，那么将如下使用两种不同的算法：
+
+\begin{itemize}
+\item 通过查询数组的大小，来进行加和计算：
+
+\begin{codebox}[cpp]
+int sum {0};
+for (size_t i {0}; i < array_size; ++i) { sum += array[i]; }
+\end{codebox}
+
+\item 使用迭代器进行循环，直到数组的末尾：
+
+\begin{codebox}[cpp]
+int sum {0};
+while (list_node != nullptr) {
+    sum += list_node->value; list_node = list_node->next;
+}
+\end{codebox}
+
+\end{itemize}
+
+两种方法都能计算出所有项的加和，不过我们键入的代码，有多少用在实际加和任务中了呢？如果说要使用其他结构体来存储这些数据，例如\texttt{std::map}，难道我们还要在重新实现一个函数？使用迭代器是最佳的选择。
+
+使用迭代器的代码才更加的通用：
+
+\begin{codebox}[cpp]
+int sum {0};
+for (int i : array_or_vector_or_map_or_list) { sum += i; }
+\end{codebox}
+
+这段代码很简洁，只是使用C++11添加的for循环范围特性就完成了整体的叠加。其就像是个语法糖，将其扩展后类似如下代码：
+
+\begin{codebox}[cpp]
+{
+    auto && __range = array_or_vector_or_map_or_list ;
+    auto __begin = std::begin(__range);
+    auto __end = std::end(__range);
+    for ( ; __begin != __end; ++__begin) {
+        int i = *__begin;
+        sum += i;
+    }
+}
+\end{codebox}
+
+这段代码对于使用迭代器的老手来说并没有什么，不过对于刚接触迭代器的新手来说就像是在变魔术。
+
+假设我们的\texttt{vector}内容如下所示：
+
+\myGraphic{0.9}{images/chapter3/3-0-1.png}{}
+
+\texttt{std::begin(vector)}和\texttt{vector.begin()}等价，并且返回\texttt{vector}中指向第一个元素的迭代器(指向1)。\texttt{std::end(vector)}与\texttt{vector.end()}等价，并返回指向\texttt{vector}末尾元素的迭代器(指向5的后方)。
+
+每一次迭代，循环都会检查开始迭代器是否与末尾迭代器不同。如果是，那么可以对开始迭代器进行解引用，并获取其指向的值。然后，推动迭代器指向下一个元素，再与末尾迭代器进行比较，以此类推。这也能提升代码的可读性，这样的迭代器就类似于C风格的指针。实际上，C风格的指针也是一种迭代器。
+
+\mySmallsection{迭代器的类型}
+
+C++中很多迭代器类型，都有各自的局限性。不用去死记这些限制，只要记住一种类型的能力是从更强大的类型继承过来的即可。当知道算法是使用何种迭代器实现时，编译器就可以以更好的方式优化这个算法。所以，开发者只要表达清楚自己想要实现的算法，那么编译器将选择优化后的实现来完成对应的任务。
+
+让我们来看下这些迭代器吧(从左往右)：
+
+\myGraphic{0.9}{images/chapter3/3-0-2.png}{}
+
+\mySmallsection{输入迭代器}
+
+只能用来读取指向的值。当该迭代器自加时，之前指向的值就不可访问。也就是说，不能使用这个迭代器在一个范围内遍历多次。\texttt{std::istream\_iterator}就是这样的迭代器。
+
+\mySmallsection{前向迭代器}
+
+类似于输入迭代器，不过其可以在指示范围内迭代多次。\texttt{std::forward\_list}就是这样的迭代器。就像一个单向链表一样，只能向前遍历，不能向后遍历，但可以反复迭代。
+
+\mySmallsection{双向迭代器}
+
+从名字就能看出来，这个迭代器可以自增，也可以自减，迭代器可以向前或向后迭代。\texttt{std::list}，\texttt{std::set}和\texttt{std::map}都支持双向迭代器。
+
+\mySmallsection{随机访问迭代器}
+
+与其他迭代器不同，随机访问迭代器一次可以跳转到任何容器中的元素上，而非之前的迭代器，一次只能移动一格。\texttt{std::vector}和\texttt{std::deque}的迭代器就是这种类型。
+
+\mySmallsection{连续迭代器}
+
+这种迭代器具有前述几种迭代器的所有特性，不过需要容器内容在内存上是连续的，类似一个数组或\texttt{std::vector}。
+
+\mySmallsection{输出迭代器}
+
+该迭代器与其他迭代器不同。因为这是一个单纯用于写出的迭代器，其只能增加，并且将对应内容写入文件当中。如果要读取这个迭代中的数据，那么读取到的值就是未定义的。
+
+\mySmallsection{可变迭代器}
+
+如果一个迭代器既有输出迭代器的特性，又有其他迭代器的特性，那么这个迭代器就是可变迭代器。该迭代器可读可写。如果我们从一个非常量容器的实例中获取一个迭代器，那么这个迭代器通常都是可变迭代器。
+
+
+% --- recipe 1: chapter3-1-chinese.md ---
+\section{建立可迭代区域}
+
+我们已经认识了STL中提供的各种迭代器。我们只需实现一个迭代器，支持前缀加法\texttt{++}，解引用\texttt{*}和比较操作\texttt{==}，这样我们就能使用C++11基于范围的for循环对该迭代器进行遍历。
+
+为了更好的了解迭代器，本节中将展示如何实现一个迭代器。迭代该迭代器时，只输出一组数字。实现的迭代器并不支持任何容器，以及类似的结构。这些数字是在迭代过程中临时生成的。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将实现一个迭代器类，并且对该迭代器进行迭代：
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream> 
+\end{codebox}
+
+\item 迭代器结构命名为\texttt{num\_iterator}:
+
+\begin{codebox}[cpp]
+class num_iterator { 
+\end{codebox}
+
+\item 其数据类型只能是整型，仅用是用来计数的，构造函数会初始化它们。显式声明构造函数是一个好习惯，这就能避免隐式类型转换。需要注意的是，我们会使用\texttt{position}值来初始化\texttt{i}。这就让\texttt{num\_iterator}可以进行默认构造。虽然我们的整个例子中都没有使用默认构造函数，但默认构造函数对于STL的算法却是很重要的。
+
+\begin{codebox}[cpp]
+    int i;
+public:
+    explicit num_iterator(int position = 0) : i{position} {}
+\end{codebox}
+
+\item 当对迭代器解引用时*it`，将得到一个整数：
+
+\begin{codebox}[cpp]
+    int operator*() const { return i; }
+\end{codebox}
+
+\item 前缀加法操作\texttt{++it}：
+
+\begin{codebox}[cpp]
+num_iterator& operator++() {
+    ++i;
+    return *this;
+}
+\end{codebox}
+
+\item \texttt{for}循环中需要迭代器之间进行比较。如果不相等，则继续迭代：
+
+\begin{codebox}[cpp]
+    bool operator!=(const num_iterator &other) const {
+        return i != other.i;
+    }
+};
+\end{codebox}
+
+\item 迭代器类就实现完成了。我们仍需要一个中间对象对应于\texttt{ for (int i : intermediate(a, b)) \{...\}}写法，其会从头到尾的遍历，其为一种从a到b遍历的预编程。我们称其为\texttt{num\_range}:
+
+\begin{codebox}[cpp]
+class num_range {
+\end{codebox}
+
+\item 其包含两个整数成员，一个表示从开始，另一个表示结束。如果我们要从0到9遍历，那么a为0，b为10(\texttt{[0, 10)})：
+
+\begin{codebox}[cpp]
+    int a;
+    int b;
+public:
+    num_range(int from, int to)
+        : a{from}, b{to}
+    {}
+\end{codebox}
+
+\item 该类也只有两个成员函数需要实现：\texttt{begin}和\texttt{end}函数。两个函数都返回指向对应数字的指针：一个指向开始，一个指向末尾。
+
+\begin{codebox}[cpp]
+    num_iterator begin() const { return num_iterator{a}; }
+    num_iterator end() const { return num_iterator{b}; }
+};
+\end{codebox}
+
+\item 所有类都已经完成，让我们来使用一下。让我们在主函数中写一个例子，遍历100到109间的数字，并打印这些数值：
+
+\begin{codebox}[cpp]
+int main()
+{
+    for (int i : num_range{100, 110}) {
+        std::cout << i << ", ";
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 编译运行后，得到如下输出：
+
+\begin{codebox}[cpp]
+100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+考虑一下如下的代码段：
+
+\begin{codebox}[cpp]
+for (auto x : range) { code_block; }
+\end{codebox}
+
+这段代码将被编译器翻译为类似如下的代码：
+
+\begin{codebox}[cpp]
+{
+    auto __begin = std::begin(range);
+    auto __end = std::end(range);
+    for ( ; __begin != __end; ++__begin) {
+        auto x = *__begin;
+        code_block
+    }
+}
+\end{codebox}
+
+这样看起来就直观许多，也能清楚的了解我们的迭代器需要实现如下操作：
+
+\begin{itemize}
+\item operator!=
+
+\item operatpr++
+
+\item operator*
+
+\end{itemize}
+
+也需要\texttt{begin}和\texttt{end}方法返回相应的迭代器，用来确定开始和结束的范围。
+
+\begin{myInfoBox}
+Note: 本书中，我们使用\texttt{std::begin(x)}替代\texttt{x.begin()}。如果有\texttt{begin}成员函数，那么\texttt{std::begin(x)}会自动调用\texttt{x.begin()}。当\texttt{x}是一个数组，没有\texttt{begin()}方法是，\texttt{std::begin(x)}会找到其他方式来处理。同样的方式也适用于\texttt{std::end(x)}。当用户自定义的类型不提供\texttt{begin/end}成员函数时，\texttt{x.begin()}0就无法工作了。
+\end{myInfoBox}
+
+本例中的迭代器是一个前向迭代器。再来看一下使用\texttt{num\_range}的循环，从另一个角度看是非常的简单。
+
+\begin{myInfoBox}
+Note: 回头看下构造出迭代器的方法在\texttt{range}类中为\texttt{const}。这里不需要关注编译器是否会因为修饰符\texttt{const}而报错，因为迭代\texttt{const}的对象是很常见的事。
+\end{myInfoBox}
+
+
+% --- recipe 2: chapter3-2-chinese.md ---
+\section{让自己的迭代器与STL的迭代器兼容}
+
+上一节中，我们实现了自己的迭代器，不过为了融合STL提供的迭代器的优点，我们需要提供一些迭代器接口。后面我们会来学习如果实现这些接口，不过将我们自定义的迭代器与STL的标准迭代器放在一起时，有时会发现有编译不通过的问题。这是为什么呢？
+
+STL算法尝试寻找更多有关于我们所使用迭代器的信息。不同迭代器的能力是不同的，不大可能用同样的算法实现不同的迭代器。例如，我们只是简单的从一个\texttt{std::vector}将其中的数字拷贝到另一个时，我们的实现中可以直接调用\texttt{memcpy}快速实现这个功能。如果容器是\texttt{std::list}的话，\texttt{memcpy}的方式就不好用了，只能一个个的单独拷贝。实现者将大量的自动优化思想注入STL算法实现当中。为了能更好的使用，我们也会为我们的迭代器装备这些思想。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将实现一个简单的计数迭代器(与STL算法一起使用)，一开始这个实现是无法编译通过的。我们需要做一些兼容性操作，使得程序通过编译。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <algorithm>
+\end{codebox}
+
+\item 实现一个计数迭代器，作为基础版本。当我们使用其进行遍历时，我们只需要增加计数器即可。\texttt{num\_range}用来处理\texttt{begin}和\texttt{end}迭代器。
+
+\begin{codebox}[cpp]
+class num_iterator
+{
+    int i;
+public:
+    explicit num_iterator(int position = 0) : i{position} {}
+    int operator*() const { return i; }
+    num_iterator& operator++() {
+        ++i;
+        return *this;
+    }
+    bool operator!=(const num_iterator &other) const {
+        return i != other.i;
+    }
+    bool operator==(const num_iterator &other) const {
+        return !(*this != other);
+    }
+};
+class num_range {
+    int a;
+    int b;
+public: 
+    num_range(int from, int to)
+        : a{from}, b{to}
+    {}
+    num_iterator begin() const { return num_iterator{a}; }
+    num_iterator end() const { return num_iterator{b}; }
+};
+\end{codebox}
+
+\item 声明所使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 现在让我们来遍历100到109间的数字。这里需要注意的是，110这里是开区间，所以值无法遍历到110。
+
+\begin{codebox}[cpp]
+int main()
+{
+    num_range r {100, 110};
+\end{codebox}
+
+\item 现在，我们使用一个STL算法\texttt{std::minmax\_element}。这个算法会返回一个\texttt{std::pair}，其具有两个迭代器：一个指向最小值的迭代器和一个指向最大值的迭代器。在这个范围中100和109即为这两个迭代器所指向的位置。
+
+\begin{codebox}[cpp]
+    auto min_max(minmax_element(r.begin(), r.end()));
+    cout << *min_max.first << " - " << *min_max.second << '\n';
+}
+\end{codebox}
+
+\item 我们在编译的时候遇倒如下的错误信息。这个错误与\texttt{std::iterator\_traits}有关。这个错误可能在使用其他编译器时，错误信息的格式不同，或者就没有错误。这个错误在clang 5.0.0 (trunk 299766)版本出现。
+
+\myGraphic{0.9}{images/chapter3/3-2-1.png}{}
+
+\item 为了修正这个错误，我们需要激活迭代器的迭代功能。之后定义一个\texttt{num\_iterator}结构体，我们会对\texttt{std::iterator\_traits}进行特化。这个特化就是告诉STL我们的\texttt{num\_iterator}是一种前向迭代器，并且指向的对象是\texttt{int}类型的值。
+
+\begin{codebox}[cpp]
+namespace std {
+template <>
+struct iterator_traits<num_iterator> {
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = int;
+};
+}
+\end{codebox}
+
+\item 让我们再对程序进行编译，之前的错误应该不存在了。输出了范围内的最大值和最小值:
+
+\begin{codebox}[cpp]
+100 - 109
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+一些STL算法需要知道其处理容器的迭代器类型，有些还需要知道迭代器所指向的类型。这就是要有不同实现的原因。
+
+不过，所有STL算法将会通过\texttt{std::iterator\_traits<my\_iterator>}访问对应类型的迭代器(这里假设迭代器类型为my\_iterator)。这个特性类需要包含五种不同类型的成员定义：
+
+\begin{itemize}
+\item difference\_type: \texttt{it1- it2}结果的类型
+
+\item value\_type: 迭代器解引用的数据的类型(这里需要注意void类型)
+
+\item pointer: 指向元素指针的类型
+
+\item reference: 引用元素的类型
+
+\item iterator\_category: 迭代器属于哪种类型
+
+\end{itemize}
+
+pointer、reference和difference\_type并没有在num\_iterator中定义，因为其实际的内存值不重复(我们只是返回int值，不想数组一样是连续的)。因此num\_iterator并不需要定义这些类型，因为算法是依赖于解引用后指定内存上的值。如果我们的迭代器定义了这些类型，就可能会出现问题。
+
+\mySmallsection{There's more...}
+
+C++17标准之前，C++都鼓励自定义迭代器继承于\texttt{std::iterator<...>}，这样所有主流的类型都会自动定义。C++17中这条建议仍然能工作，但是不再推荐从\texttt{std::iterator<...>}继承了。
+
+
+% --- recipe 3: chapter3-3-chinese.md ---
+\section{使用迭代适配器填充通用数据结构}
+
+大多数情况下，我们想要用数据来填充任何容器，不过数据源和容器却没有通用的接口。这种情况下，我们就需要人工的去编写算法，将相应的数据推入容器中。不过，这会分散我们解决问题的注意力。
+
+不同数据结构间的数据传递现在可以只通过一行代码就完成，这要感谢STL中的\textbf{迭代适配器}。本节会展示如何使用迭代适配器。
+
+\mySmallsection{How to do it...}
+
+本节中，我们使用一些迭代器包装器，展示如何使用包装器，并了解其如何在编程任务中给予我们帮助。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <string>
+#include <iterator>
+#include <sstream>
+#include <deque>
+\end{codebox}
+
+\item 声明使用的命名空间。
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 开始使用\texttt{std::istream\_iterator}。这里我们特化为\texttt{int}类型。这样，迭代器就能将标准输入解析成整数。例如，当我们遍历这个迭代器，其就和\texttt{std::vector<int>}一样了。\texttt{end}迭代器的类型没有变化，但不需要构造参数:
+
+\begin{codebox}[cpp]
+int main()
+{
+    istream_iterator<int> it_cin {cin};
+    istream_iterator<int> end_cin;
+\end{codebox}
+
+\item 接下来，我们实例化一个\texttt{std::deque<int>}，并且将标准输入中的所有数字拷贝到队列中。队列本身不是一个迭代器，所以我们使用\texttt{std::back\_inserter}辅助函数将队列包装入\texttt{std::back\_insert\_iterator}中。这样指定的迭代器就能执行\texttt{v.pack\_back(item)}，将标准输入中的每个元素放入容器中。这样就能让队列自动增长。
+
+\begin{codebox}[cpp]
+deque<int> v;
+copy(it_cin, end_cin, back_inserter(v));    
+\end{codebox}
+
+\item 接下来，我们使用\texttt{std::istringstream}将元素拷贝到队列中部。先使用字符串，来定义一个字符流的实例：
+
+\begin{codebox}[cpp]
+    istringstream sstr {"123 456 789"};
+\end{codebox}
+
+\item 我们需要选择列表的插入点。这个点必须在中间，我们使用队列的起始指针，然后使用\texttt{std::next}函数将其指向中间位置。函数第二个参数的意思就是让指针前进多少，这里选择\texttt{v.size() / 2}步，也就是队列的正中间位置(这里我们将\texttt{v.size()}强转为\texttt{int}类型，因为\texttt{std::next}第二个参数类型为\texttt{difference\_type}，是和第一个迭代器参数间的距离。因此，该类型是个有符号类型。根据编译选项，如果我们不进行显式强制转化，编译器可能会报出警告)。
+
+\begin{codebox}[cpp]
+auto deque_middle (next(begin(v),
+     static_cast<int>(v.size()) / 2));
+\end{codebox}
+
+\item 现在，我们可以从输入流中一步步的拷贝整数到队列当中。另外，流的\texttt{end}包装迭代器为空的\texttt{ std::istream\_iterator<int> }。这个队列已经被包装到一个插入包装器中，也就是成为\texttt{std::insert\_iterator}的一个实例，其指向队列中间位置的迭代器，我们用\texttt{deque\_middle}表示:
+
+\begin{codebox}[cpp]
+    copy(istream_iterator<int>{sstr}, {}, inserter(v, deque_middle));
+\end{codebox}
+
+\item 现在，让我们使用\texttt{std::front\_insert\_iterator}插入一些元素到队列中部：
+
+\begin{codebox}[cpp]
+initializer_list<int> il2 {-1, -2, -3};
+copy(begin(il2), end(il2), front_inserter(v));
+\end{codebox}
+
+\item 最后一步将队列中的全部内容打印出来。\texttt{std::ostream\_iterator}作为输出迭代器，在我们的例子中其就是从\texttt{std::cout}拷贝打印出的信息，并将各个元素使用逗号隔开：
+
+\begin{codebox}[cpp]
+    copy(begin(v), end(v), ostream_iterator<int>{cout, ", "});
+    cout << '\n';
+}
+\end{codebox}
+
+\item 编译并运行，即有如下的输出。你能找到那些数字是由哪行的代码插入的吗？
+
+\begin{codebox}[cpp]
+$ echo "1 2 3 4 5" | ./main
+-3, -2, -1, 1, 2, 123, 456, 789, 3, 4, 5,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+本节我们使用了很多不同类型的迭代适配器。他们有一点是共同的，会将一个对象包装成迭代器。
+
+\textbf{std::back\_insert\_iterator}
+
+\texttt{back\_insert\_iterator}可以包装\texttt{std::vector}、\texttt{std::deque}、\texttt{std::list}等容器。其会调用容器的\texttt{push\_back}方法在容器最后插入相应的元素。如果容器实例不够长，那么容器的容量会自动增长。
+
+\textbf{std::front\_insert\_iterator}
+
+\texttt{front\_insert\_iterator}和\texttt{back\_insert\_iterator}一样，不过\texttt{front\_insert\_iterator}调用的是容器的\texttt{push\_front}函数，也就是在所有元素前插入元素。这里需要注意的是，当对类似于\texttt{std::vector}的容器进行插入时，其已经存在的所有元素都要后移，从而空出位置来放插入元素，这会对性能造成一定程度的影响。
+
+\textbf{std::insert\_iterator}
+
+这个适配器与其他插入适配器类似，不过能在容器的中间位置插入新元素。使用\texttt{std::inserter}包装辅助函数需要两个参数。第一个参数是容器的实例，第二个参数是迭代器指向的位置，就是新元素插入的位置。
+
+\textbf{std::istream\_iterator}
+
+\texttt{istream\_iterator}是另一种十分方便的适配器。其能对任何\texttt{std::istream}使用(文件流或标准输入流)，并且可以根据实例的具体特化类型，对流进行分析。本节中，我们使用了\texttt{std::istram\_iterator<int>(std::cin)}，其会将整数从标准输入中拉出来。
+
+通常，对于流来说，其长度我们是不知道的。这就存在一个问题，也就是\texttt{end}迭代器指向的位置在哪里？对于流迭代器来说，它就知道相应的\texttt{end}迭代器的位置。这样就使得迭代器的比较更加高效，不需要通过遍历来完成。这样就是为什么\texttt{end}流迭代器不需要传入任何参数的原因。
+
+\textbf{std::ostream\_iterator}
+
+\texttt{ostream\_iterator}和\texttt{istream\_iterator}类似，不过是用来进行输出的流迭代器。与\texttt{istream\_iterator}不同在于，构造时需要传入两个参数，且第二个参数必须要是一个字符串，这个字符串将会在各个元素之后，推入输出流中。这样我们就能很容易的在元素中间插入逗号或者换行的符号，以便用户进行观察。
+
+
+% --- recipe 4: chapter3-4-chinese.md ---
+\section{使用迭代器实现算法}
+
+迭代器通常根据指向位置的移动，来遍历容器中的元素，但不需要迭代对应的数据类型。迭代器也会被用来实现算法，其可以通过\texttt{++it}指向下一个元素，并且通过\texttt{*it}解引用得到对应的值。
+
+本节中，我们将用迭代器来实现斐波那契函数。斐波那契函数会有类似如下的迭代：\texttt{F(n) = F(n - 1) + F(n - 2)}。数列的初始值\texttt{F(0) = 0 }和 \texttt{F(1) = 1}。这样下列序列就可以进行计算：
+
+\begin{itemize}
+\item F(0) = 0
+
+\item F(1) = 1
+
+\item F(2) = F(1) + F(0) = 1
+
+\item F(3) = F(2) + F(1) = 2
+
+\item F(4) = F(3) + F(2) = 3
+
+\item F(5) = F(4) + F(3) = 5
+
+\item F(6) = F(5) + F(4) = 8
+
+\item ...
+
+\end{itemize}
+
+我们要实现一个函数，可以输出斐波那契第n个数的值。通常我们都会使用函数迭代，或者是循环来实现这个函数。这样的话，我们只能一个个的将相应的值算出来，然后才能计算出下一个值。这里我们有两个选择——递归调用斐波那契函数计算整个数列，这样很浪费计算时间，或者将最后两个斐波那契数作为临时变量，并用它们来计算下一个数。第二种方法我们需要重新实现斐波那契算法循环。这样我们就可以将斐波那契数列计算的代码和我们实际的代码放在一起：
+
+\begin{codebox}[cpp]
+size_ta{0};
+size_tb{1};
+for(size_ti{0};i< N;++i){
+    constsize_told_b{b};
+    b+=a;
+    a=old_b;
+    // do something with b, which is the current fibonacci number
+}
+\end{codebox}
+
+使用迭代器实现斐波那契数列是一件很有意思的事情。如何将循环中的迭代，使用迭代器的前向自加操作来代替呢？其实很简单，让我们来看一下。
+
+\mySmallsection{How to do it...}
+
+本节中，我们主要关注如何用一个迭代器实现生成斐波那契数列。
+
+\begin{enumerate}
+\item 为了打印斐波那契数列在终端，我们需要包含标准输入输出流头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+\end{codebox}
+
+\item 我们调用斐波那契迭代器——\texttt{fibit}。其会指向一个值\texttt{i}，其保存的值为斐波那契数列对应的位置，\texttt{a}和\texttt{b}保存斐波那契数列中最后两个值。实例化迭代器时，需要将斐波那契迭代器初始化为\texttt{F(0)}的值：
+
+\begin{codebox}[cpp]
+class fibit
+{
+    size_t i {0};
+    size_t a {0};
+    size_t b {1};
+\end{codebox}
+
+\item 下一步，定义标准构造函数和另一个构造函数用来初始化迭代器。
+
+\begin{codebox}[cpp]
+public:
+    fibit() = default;
+    explicit fibit(size_t i_)
+        : i{i_}
+    {}
+\end{codebox}
+
+\item 当我们对迭代器解引用时，迭代器将返回对应位置的数值。
+
+\begin{codebox}[cpp]
+    size_t operator*() const { return b; }
+\end{codebox}
+
+\item 当移动迭代器\texttt{++}时，其会移动到下一个斐波那契数上。这里的实现与基于循环的实现几乎是一样的。
+
+\begin{codebox}[cpp]
+fibit& operator++() {
+    const size_t old_b {b};
+    b += a;
+    a = old_b;
+    ++i;
+    return *this;
+} 
+\end{codebox}
+
+\item 当使用循环时，增加后的迭代器将会和\texttt{end}迭代器进行比较，所以这里需要为迭代器实现不等于\texttt{!=}操作符。我们只比较当且迭代器所对应的步数，这比循环1000000次再结束迭代器简单许多，这样我们就不需要计算太多的斐波那契数：
+
+\begin{codebox}[cpp]
+    bool operator!=(const fibit &o) const { return i != o.i; }
+};
+\end{codebox}
+
+\item 为了能让斐波那契迭代器适应\texttt{for}循环的范围写法，我们需要实现一个范围类。我们称这个类为\texttt{fib\_range}，其构造函数只需要一个参数，这个参数能够告诉我们我们想要遍历的范围：
+
+\begin{codebox}[cpp]
+class fib_range
+{
+    size_t end_n;
+public:
+    fib_range(size_t end_n_)
+        : end_n{end_n_}
+    {}
+\end{codebox}
+
+\item \texttt{begin}和\texttt{end}函数将会返回对应位置上的迭代器，也就是\texttt{F(0)}和\texttt{F(end\_n)}对应的迭代器。
+
+\begin{codebox}[cpp]
+    fibit begin() const { return fibit{}; }
+    fibit end() const { return fibit{end_n}; }
+};
+\end{codebox}
+
+\item 好了，其他与迭代器相关的代码我们就不管了。因为我们辅助类就能很好的帮助我们将这些细节的东西隐藏掉！让我们打印10个斐波那契数字：
+
+\begin{codebox}[cpp]
+int main()
+{
+    for (size_t i : fib_range(10)) {
+        std::cout << i << ", ";
+    }
+    std::cout << '\n';
+}
+\end{codebox}
+
+\item 编译运行后，我们会在终端上看到如下的打印：
+
+\begin{codebox}[cpp]
+1, 1, 2, 3, 5, 8, 13, 21, 34, 55,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{There's more...}
+
+为了兼容STL中的迭代器，这里实现的迭代器必须支持\texttt{std::iterator\_traits}类。想要知道怎么做，要参考一下3.2节(让自己的迭代器与STL的迭代器兼容)，其对如何兼容进行了明确地说明。
+
+\begin{myInfoBox}
+Note： 试着从迭代器的角度思考，这样的代码在很多情况下就显得十分优雅。不用担心性能，编译器会根据模板对迭代器相关的代码进行优化。
+\end{myInfoBox}
+
+为了保证例子的简洁性，我们并没有对其做任何事情，不过要是作为斐波那契迭代器的发布库的话，其可用性还是比较差的——\texttt{fibit}传入一个参数的构造函数，可以直接使用\texttt{end}迭代器替换，因为\texttt{fibit}并没有包含任何一个合法的斐波那契值，这里的库并不强制使用这种方式。
+
+还有些方面需要进行修复：
+
+\begin{itemize}
+\item 将\texttt{fibit(size\_t i\_)}声明为私有构造函数，并在\texttt{fibit}类中将\texttt{fib\_range}类声明为一个友元类。这样用户就只能使用正确的方式进行迭代了。
+
+\item 可以使用迭代器哨兵，避免用户引用\texttt{end}迭代器。可以参考一下3.6节(使用哨兵终止迭代)中内容，以获得更多信息。
+
+\end{itemize}
+
+
+% --- recipe 5: chapter3-5-chinese.md ---
+\section{使用反向迭代适配器进行迭代}
+
+有时我们需要反向迭代一个范围内的内容。基于范围的for循环中，STL迭代通常都使用前向累加的方式进行迭代，那么当需要反向时，就需要对其进行递减。当然，这里可以将迭代器进行包装，将调用累加操作改为递减的操作。听起来要写好多冗余的代码，来对反向迭代进行支持。
+
+STL中提供了反向迭代适配器，其能帮助我们对迭代器进行包装。
+
+\mySmallsection{How to do it...}
+
+本节中，我们将用另一种方式使用反向迭代器，只为了展示如何使用它们：
+
+\begin{enumerate}
+\item 包含必要的头文件：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <list>
+#include <iterator>
+\end{codebox}
+
+\item 声明所使用的命名空间：
+
+\begin{codebox}[cpp]
+using namespace std;
+\end{codebox}
+
+\item 为了有东西可以迭代，我们实例化一个整数列表：
+
+\begin{codebox}[cpp]
+int main()
+{
+    list<int> l {1, 2, 3, 4, 5};
+\end{codebox}
+
+\item 现在，让我们来反向打印这些数字。为了完成反向打印，我们调用\texttt{std::list}的成员函数\texttt{rbegin}和\texttt{rend}获得反向迭代器，并且将数字推入输出流\texttt{ostream\_iterator}适配器中:
+
+\begin{codebox}[cpp]
+copy(l.rbegin(), l.rend(), ostream_iterator<int>{cout, ", "});
+cout << '\n';
+\end{codebox}
+
+\item 如果容器不提供\texttt{rbegin}和\texttt{rend}函数的话，就需要使用双向迭代器来帮忙了，这里可以使用工厂函数\texttt{std::make\_reverse\_iterator}创建双向迭代器。其能接受普通迭代器，然后将其转换为反向迭代器：
+
+\begin{codebox}[cpp]
+    copy(make_reverse_iterator(end(l)),
+        make_reverse_iterator(begin(l)),
+        ostream_iterator<int>{cout, ", "});
+    cout << '\n';
+}
+\end{codebox}
+
+\item 编译并运行该程序，就能得到如下的输出：
+
+\begin{codebox}[cpp]
+5, 4, 3, 2, 1,
+5, 4, 3, 2, 1,
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{How it works...}
+
+为了将一个普通迭代器转换为一个反向迭代器，容器至少要支持双向迭代。这就需要双向类别或更高级的迭代器才能满足条件。
+
+反向迭代器是普通迭代器的一种，并且连接口和普通迭代器都一样，不过其累加操作会被当做递减操作来进行。
+
+下面就来聊一下\texttt{begin}和\texttt{end}迭代器的位置。先来看一下图，迭代器区域里面是一串标准的数字序列。
+
+\myGraphic{0.9}{images/chapter3/3-5-1.png}{}
+
+如果序列是从1到5，\texttt{begin}迭代器将指向元素1所在的位置，并且\texttt{end}迭代器将指向元素5后面的位置。当定义了反向迭代器，\texttt{rbegin}迭代器就指向了元素5，并且\texttt{rend}迭代器指向元素1之前的位置。可以将书反过来看，可以发现这两个中方式是镜像的。
+
+当我们想让我们自定义的容器类支持反向迭代，我们不用将所有细节一一实现；我们只需使用\texttt{std::make\_reverse\_iterator}工厂函数，将普通的迭代器包装成反向迭代器即可，背后的操作STL会帮我们完成。
+
+
+% --- recipe 6: chapter3-6-chinese.md ---
+\section{使用哨兵终止迭代}
+
+对于STL算法和基于范围的for循环来说，都会假设迭代的位置是提前知道的。在有些情况下，并不是这样，我们在迭代器到达末尾之前，我们是很难确定结束的位置在哪里。
+
+这里使用C风格的字符串来举例，我们在编译时无法知道字符串的长度，只能在运行时使用某种方法进行判断。字符串遍历的代码如下所示：
+
+\begin{codebox}[cpp]
+for (const char *c_ponter = some_c_string; *c_pointer != '\0'; ++c_pointer) {
+    const char c = *c_pointer;
+    // do something with c
+}
+\end{codebox}
+
+对于基于范围的for循环来说，我们可以将这段字符串包装进一个\texttt{std::string}实例中，\texttt{std::string}提供\texttt{begin()}和\texttt{end()}函数：
+
+\begin{codebox}[cpp]
+for (char c : std::string(some_c_string)) { /* do something with c */ }
+\end{codebox}
+
+不过，\texttt{std::string}在构造的时候也需要对整个字符串进行遍历。C++17中加入了\texttt{std::string\_view}，但在构造的时候也会对字符串进行一次遍历。对于比较短的字符串来说这是没有必要的，不过对于其他类型来说就很有必要。\texttt{std::istream\_iterator}可以用来从\texttt{std::cin}捕获输入，当用户持续输入的时候，其\texttt{end}迭代器并不能指向输入字符串真实的末尾。
+
+C++17添加了一项新的特性，其不需要\texttt{begin}迭代器和\texttt{end}迭代器是同一类型的迭代器。本节我们看看，这种小修改的大用途。
+
+\mySmallsection{How to do it...}
+
+本节，我们将在范围类中构造一个迭代器，其就不需要知道字符串的长度，也就不用提前找到字符串结束的位置。
+
+\begin{enumerate}
+\item 包含必要的头文件。
+
+\begin{codebox}[cpp]
+#include <iostream> 
+\end{codebox}
+
+\item 迭代器哨兵是本节的核心内容。奇怪的是，它的定义完全是空的。
+
+\begin{codebox}[cpp]
+class cstring_iterator_sentinel {};
+\end{codebox}
+
+\item 我们先来实现迭代器。其包含一个字符串指针，指针指向的容器就是我们要迭代的：
+
+\begin{codebox}[cpp]
+class cstring_iterator {
+    const char *s {nullptr};
+\end{codebox}
+
+\item 构造函数只是初始化内部字符串指针，对应的字符串是外部输入。显式声明构造函数是为了避免字符串隐式转换为字符串迭代器:
+
+\begin{codebox}[cpp]
+public:
+    explicit cstring_iterator(const char *str)
+        : s{str}
+    {}
+\end{codebox}
+
+\item 当对迭代器进行解引用，其就会返回对应位置上的字符：
+
+\begin{codebox}[cpp]
+    char operator*() const { return *s; }
+\end{codebox}
+
+\item 累加迭代器只增加迭代器指向字符串的位置：
+
+\begin{codebox}[cpp]
+cstring_iterator& operator++() {
+    ++s;
+    return *this;
+}
+\end{codebox}
+
+\item 这一步是最有趣的。我们为了比较，实现了\texttt{!=}操作符。不过，这次我们不会去实现迭代器的比较操作，这次迭代器要和哨兵进行比较。当我们比较两个迭代器时，在当他们指向的位置相同时，我们可以认为对应范围已经完成遍历。通过和空哨兵对象比较，当迭代器指向的字符为\texttt{\textbackslash{}0}字符时，我们可以认为到达了字符串的末尾。
+
+\begin{codebox}[cpp]
+    bool operator!=(const cstring_iterator_sentinel) const {
+        return s != nullptr && *s != '\0';
+    }
+};
+\end{codebox}
+
+\item 为了使用基于范围的\texttt{for}循环，我们需要一个范围类，用来指定\texttt{begin}和\texttt{end}迭代器：
+
+\begin{codebox}[cpp]
+class cstring_range {
+    const char *s {nullptr};
+\end{codebox}
+
+\item 实例化时用户只需要提供需要迭代的字符串：
+
+\begin{codebox}[cpp]
+public:
+    cstring_range(const char *str)
+        : s{str}
+    {}
+\end{codebox}
+
+\item \texttt{begin()}函数将返回一个\texttt{cstring\_iterator}迭代器，其指向了字符串的起始位置。\texttt{end()}函数会返回一个哨兵类型。需要注意的是，如果不使用哨兵类型，这里将返回一个迭代器，这个迭代器要指向字符串的末尾，但是我们无法预知字符串的末尾在哪里。
+
+\begin{codebox}[cpp]
+    cstring_iterator begin() const {
+        return cstring_iterator{s};
+    }
+    cstring_iterator_sentinel end() const {
+        return {};
+    }
+};
+\end{codebox}
+
+\item 类型定义完，我们就来使用它们。例子中字符串是用户输入，我们无法预知其长度。为了让使用者给我们一些输入，我们的例子会判断是否有输入参数。
+
+\begin{codebox}[cpp]
+int main(int argc, char *argv[])
+{
+    if (argc < 2) {
+        std::cout << "Please provide one parameter.\n";
+        return 1;
+    }
+\end{codebox}
+
+\item 当程序运行起来时，我们就知道\texttt{argv[1]}中包含的是使用者的字符串。
+
+\begin{codebox}[cpp]
+    for (char c : cstring_range(argv[1])) {
+        std::cout << c;
+    }
+    std::cout << '\n';
+} 
+\end{codebox}
+
+\item 编译运行程序，就能得到如下的输出：
+
+\begin{codebox}[cpp]
+$ ./main "abcdef"
+abcdef
+\end{codebox}
+
+\end{enumerate}
+
+循环会将所有的字符打印出来。这是一个很小的例子，只是为了展示如何使用哨兵确定迭代的范围。当在无法获得\texttt{end}迭代器的位置时，这是一种很有用的方法。当能够获得\texttt{end}迭代器时，就不需要使用哨兵了。
+
+
+% --- recipe 7: chapter3-7-chinese.md ---
+\section{使用检查过的迭代器自动化检查迭代器代码}
+
+迭代器很有用，能提供一般化的接口供用户使用。不过，迭代器经常被当做指针误用。当指针指向一个非法的内存位置时，不能进行解引用。这对迭代器也适用，不过有大量的条件来界定迭代器指向的位置是否合法。这些可以通过看一下STL文档就能了解到，但是还会写出很容易出现bug的代码。
+
+最好的情况是，这些问题没有在客户的机器上出现，而是开发者测试这些程序时就能暴露出来。不过，通常即使是解引用了悬垂指针和错误的迭代器，代码也不会报错。这种情况是最糟的，因为这种未定义行为的代码，没法确定会发生什么。
+
+幸运的是，有工具可以帮助我们。GUN STL有调试模式可选，GUN C++编译器和LLVM clang C++编译器都提供这样的库，其会为我们生成具有调试信息的二进制程序，可以让错误更容易暴露出来。这种库非常容易使用，并且特别有用，我们将在本节展示。Microsoft Visual C++标准库还提供了更多的检查项。
+
+\mySmallsection{How to do it...}
+
+本节我们将使用迭代器故意访问一个非法位置：
+
+\begin{enumerate}
+\item 包含头文件。
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+\end{codebox}
+
+\item 首先实例化一个整型类\texttt{vector}，并且让指针指向值1。我们使用\texttt{shrink\_to\_fit()}将\texttt{vector}的容积设置为3，多分配的内存是不必要的，小一点的存储空间会让迭代速度更快：
+
+\begin{codebox}[cpp]
+int main()
+{
+    std::vector<int> v {1, 2, 3};
+    v.shrink_to_fit();
+    const auto it (std::begin(v));
+\end{codebox}
+
+\item 然后解引用迭代器，打印相应的内容：
+
+\begin{codebox}[cpp]
+    std::cout << *it << '\n';
+\end{codebox}
+
+\item 接下来，让我们向\texttt{vector}中增加一个新数。这样\texttt{vector}的长度就不够再放下另外一个数，这里\texttt{vector}会自动增加其长度。通过分配一个新的更大的内存块来实现长度的增加，会将所有现存的项移到新的块，然后删除旧的内存块。
+
+\begin{codebox}[cpp]
+    v.push_back(123);
+\end{codebox}
+
+\item 现在，让我们再次通过迭代器从1开始打印\texttt{vector}。这就坏了。为什么呢？因为在\texttt{vector}自增的过程中，会分配新的内存，删除旧的内存，但是迭代器却不知道这个改变。这就意味着，迭代器将会指向旧地址，并且我们不知道这样做会怎样。
+
+\begin{codebox}[cpp]
+    std::cout << *it << '\n'; // bad bad bad!
+}
+\end{codebox}
+
+\item 编译变这个程序并运行，我们不会看到任何错误，不过迭代器解引用所打印出来的数字看上去像是随机数。看上去没有问题，反而最有问题。如果不指出来，可能没人会发现问题。
+
+\myGraphic{0.9}{images/chapter3/3-7-1.png}{}
+
+\item 这时调试工具就派上了用场。GUN STL支持一种预处理宏\texttt{\_GLIBCXX\_DEBUG}，其会激活STL中对健壮性检查的代码。这会让程序变慢，不过更容易找到Bug。我们可以通过\texttt{-D\_GLIBCXX\_DEBUG}编译选项来启用这些代码，或者在代码的最开始加上这个宏。如你所见，其输出相关的错误信息，并关闭了应用的进程。Microsoft Visual C++ 编译器可以通过\texttt{/D\_ITERATOR\_DEBUG\_LEVEL=1 }启用检查。
+
+\myGraphic{0.9}{images/chapter3/3-7-2.png}{}
+
+\item LLVM/clang实现的STL也有调试标识，其目的是为了调试STL代码，而非用户的代码。对于用户的代码的调试，我们会使用不同的选项来调试。向clang编译器传入\texttt{-fsanitize=address -fsanitize=undefined}，可以看看会发生什么：
+
+\myGraphic{0.9}{images/chapter3/3-7-3.png}{}
+
+\end{enumerate}
+
+WOW！clang编译器对于运行错误的描述非常详细。由于信息非常的多，这里只截取其中一部分。当然，这个选项并不是clang独有的特性，对于GCC同样适用。
+
+\begin{myInfoBox}
+Note: 一些运行时的问题是因为一些库的丢失，编译器不会将libasan和libubsan( AddressSanitizer内存检测工具)自动添加到程序中，需要通过包管理器或类似的工具进行安装。
+\end{myInfoBox}
+
+\mySmallsection{How it works...}
+
+如我们之前所见，我们不需要通过修改任何代码，只需要通过为编译器添加一些编译器特性就能容易的找到代码中的Bug。
+
+这些特性由调试器实现。一个调试器通常由一个编译器模块和一个运行时库组成。当调试器被激活时，编译器将会添加额外的信息到我们的代码中，然后形成二进制可执行文件。在运行时，调试器库由二进制文件自己去链接，例如：对应库实现会代替\texttt{malloc}和\texttt{free}函数，来分析程序到底想要多少内存。
+
+调试器可以检测不同类型的Bug。这里只列举出一些常用的类型：
+
+\begin{itemize}
+\item \textbf{越界访问}: 当我们访问类似数组和\texttt{vector}类型的数据结构时，判别我们访问的位置是否在合法范围内。
+
+\item \textbf{释放后使用}: 当我们释放了堆上分配的指针后，再使用这个指针，则会出发这个Bug。
+
+\item \textbf{整数溢出}: 不同的机器上整数表达的范围可能是不同的，所以就会出现一些值使用整型无法进行表示。对于有符号整型，算法通常会出发一个未定义的行为。
+
+\item \textbf{指针对齐}: 一些架构中，需要指针以某种形式进行对齐，否则无法访问对应的地址。
+
+\end{itemize}
+
+当然，我们还能检测到更多类型的Bug。
+
+不过，激活所有的调试器不太可行，因为这样会导致程序运行的非常缓慢。不过，在单元测试和集成测试中，激活调试器是一个很好的方式。
+
+\mySmallsection{There's more...}
+
+对于不同类型的Bug，调试器的种类也是多种多样，并且还有很多调试器还在开发中。我们可以上网了解更多的信息，以便我们自己去调试程序。GCC和LLVM网站首页就列举了很多调试器，可以从在线文档中了解其调试能力：
+
+\begin{itemize}
+\item \texthref{https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html}
+
+\item \texthref{http://clang.llvm.org/docs/index.html} 可在目录中寻找调试器
+
+\end{itemize}
+
+使用调试器对程序进行整体测试是每个开发者都应该具有的意识。不过，在大多数公司中，开发者并没有这样的意识，即便是我们知道所有恶意软件和计算机病毒最重要的入口就是程序的Bug。
+
+当时是一个开发新手时，看一下你的团队中是否有使用调试器的可能。如果没有，那你上班的第一天就有机会修复那些重大的Bug，并发现隐藏的Bug。
+
+
+% --- recipe 8: chapter3-8-chinese.md ---
+\section{构建zip迭代适配器}
+
+不同的编程语言引领了不同的编程方式。不同语言有各自的受众群体，因为表达方式的不同，所以对于优雅地定义也不同。
+
+纯函数式编程算是编程风格中一种比较特别的方式。其与C和C++命令方式编程的风格大相径庭。虽然风格迥异，但是纯函数式编程却能在大多数情况下产生非常优雅地代码。
+
+这里用向量点乘为例，使用函数式方法优雅地实现这个功能。给定两个向量，然后让对应位置上的两个数字相乘，然后将所有数字加在一起。也就是\texttt{(a, b, c) * (d, e, f)}的结果为\texttt{(a * e + b * e + c * f) }。我们在C和C++也能完成这样的操作。代码可能类似如下的方式：
+
+\begin{codebox}[cpp]
+std::vector<double> a {1.0, 2.0, 3.0};
+std::vector<double> b {4.0, 5.0, 6.0};
+double sum {0};
+for (size_t i {0}; i < a.size(); ++i) {
+    sum += a[i] * b[i];
+}
+// sum = 32.0
+\end{codebox}
+
+如何使用其他语言让这段代码更优雅呢？
+
+Haskell是一种纯函数式语言，其使用一行代码就能计算两个向量的点积：
+
+\myGraphic{0.9}{images/chapter3/3-8-1.png}{}
+
+Python虽然不是纯函数式编程语言，但是也会提供类似功能：
+
+\myGraphic{0.9}{images/chapter3/3-8-2.png}{}
+
+STL提供了相应的函数实现\texttt{std::inner\_product}，也能在一行之内完成向量点积。不过，其他语言中在没有相应的库对某种操作进行支持的情况下，也能做到在一行之内完成。
+
+不需要对两种语言的语法进行详细了解的情况下，大家都应该能看的出，两个例子中最重要的就是zip函数。这个函数做了什么？假设我们有两个向量a和b，变换后将两个向量混合在一起。例如：\texttt{[a1, a2, a3]}和\texttt{[b1, b2, b3]}，使用zip函数处理的结果为\texttt{[(a1, b1), (a2, b2), (a3, b3)]}。让我们仔细观察这个例子，就是将两个向量连接在了一起。
+
+现在，关联的数字可以直接进行加法，然后累加在一起。在Haskell和Python的例子中我们看到，这个过程不需要任何循环或索引变量。[译者注：Python中是有循环的……]
+
+这里没法让C++代码如同Haskell或Python那样优雅和通用，不过本节的内容就是为了实现一个类似的迭代器——zip迭代器——然后使用这个迭代器。向量点积有特定的库支持，至于是哪些库，以及这些库如何使用，并不在本书的描述范围内。不过，本节的内容将尝试展示一种基于迭代器的方式，来帮助你使用通用的模块另外完成编程。
+
+\mySmallsection{How to do it...}
+
+本节中，我们会实现一个类似Haskell和Python中的zip函数。为了不对迭代器的机制产生影响，\texttt{vector}中的变量这里写死为\texttt{double}：
+
+\begin{enumerate}
+\item 包含头文件
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <vector>
+#include <numeric>
+\end{codebox}
+
+\item 定义\texttt{zip\_iterator}类。同时也要实现一个范围类\texttt{zip\_iterator}，这样我们在每次迭代时就能获得两个值。这也意味着我们同时遍历两个迭代器：
+
+\begin{codebox}[cpp]
+class zip_iterator {
+\end{codebox}
+
+\item zip迭代器的容器中需要保存两个迭代器：
+
+\begin{codebox}[cpp]
+    using it_type = std::vector<double>::iterator;
+    it_type it1;
+    it_type it2;
+\end{codebox}
+
+\item 构造函数会将传入的两个容器的迭代器进行保存，以便进行迭代：
+
+\begin{codebox}[cpp]
+public:
+    zip_iterator(it_type iterator1, it_type iterator2)
+        : it1{iterator1}, it2{iterator2}
+    {}
+\end{codebox}
+
+\item 增加zip迭代器就意味着增加两个成员迭代器：
+
+\begin{codebox}[cpp]
+zip_iterator& operator++() {
+    ++it1;
+    ++it2;
+    return *this;
+}
+\end{codebox}
+
+\item 如果zip中的两个迭代器来自不同的容器，那么他们一定不相等。通常，这里会用逻辑或(||)替换逻辑与(\&\&)，但是这里我们需要考虑两个容器长度不一样的情况。这样的话，我们需要在比较的时候同时匹配两个容器。这样，我们就能遍历完其中一个容器时，及时停下循环：
+
+\begin{codebox}[cpp]
+    bool operator!=(const zip_iterator& o) const {
+        return it1 != o.it1 && it2 != o.it2;
+    }
+\end{codebox}
+
+\item 逻辑等操作符可以使用逻辑不等的操作符的实现，是需要将结果取反即可：
+
+\begin{codebox}[cpp]
+bool operator==(const zip_iterator& o) const {
+    return !operator!=(o);
+}
+\end{codebox}
+
+\item 解引用操作符用来访问两个迭代器指向的值：
+
+\begin{codebox}[cpp]
+    std::pair<double, double> operator*() const {
+        return {*it1, *it2};
+    }
+};
+\end{codebox}
+
+\item 迭代器算是实现完了。我们需要让迭代器兼容STL算法，所以我们对标准模板进行了特化。这里讲迭代器定义为一个前向迭代器，并且解引用后返回的是一对\texttt{double}值。虽然，本节我们没有使用\texttt{difference\_type}，但是对于不同编译器实现的STL可能就需要这个类型：
+
+\begin{codebox}[cpp]
+namespace std {
+template <>
+struct iterator_traits<zip_iterator> {
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = std::pair<double, double>;
+    using difference_type = long int;
+};
+}
+\end{codebox}
+
+\item 现在来定义范围类，其\texttt{begin}和\texttt{end}函数返回\texttt{zip}迭代器：
+
+\begin{codebox}[cpp]
+class zipper {
+    using vec_type = std::vector<double>;
+    vec_type &vec1;
+    vec_type &vec2; 
+\end{codebox}
+
+\item 这里需要从zip迭代器中解引用两个容器中的值：
+
+\begin{codebox}[cpp]
+public:
+    zipper(vec_type &va, vec_type &vb)
+        : vec1{va}, vec2{vb}
+    {}
+\end{codebox}
+
+\item \texttt{begin}和\texttt{end}函数将返回指向两容器开始的位置和结束位置的迭代器对：
+
+\begin{codebox}[cpp]
+    zip_iterator begin() const {
+        return {std::begin(vec1), std::begin(vec2)};
+    }
+    zip_iterator end() const {
+        return {std::end(vec1), std::end(vec2)};
+    }
+};
+\end{codebox}
+
+\item 如Haskell和Python的例子一样，我们定义了两个\texttt{double}为内置类型的\texttt{vector}。这里我们也声明了所使用的命名空间。
+
+\begin{codebox}[cpp]
+int main()
+{
+    using namespace std;
+    vector<double> a {1.0, 2.0, 3.0};
+    vector<double> b {4.0, 5.0, 6.0};
+\end{codebox}
+
+\item 可以直接使用两个\texttt{vector}对\texttt{zipper}类进行构造：
+
+\begin{codebox}[cpp]
+    zipper zipped {a, b};
+\end{codebox}
+
+\item 我们将使用\texttt{std::accumulate}将所有值累加在一起。这里我们不能直接对\texttt{std::pair<double, double>}实例的结果进行累加，因为这里没有定义\texttt{sum}变量。因此，我们需要定义一个辅助Lambda函数来对这个组对进行操作，将两个数相乘，然后进行累加。Lambda函数指针可以作为\texttt{std::accumulate}的一个参数传入：
+
+\begin{codebox}[cpp]
+const auto add_product ([](double sum, const auto &p) {
+    return sum + p.first * p.second;
+});
+\end{codebox}
+
+\item 现在，让我们来调用\texttt{std::accumulate}将所有点积的值累加起来：
+
+\begin{codebox}[cpp]
+const auto dot_product (accumulate(
+    begin(zipped), end(zipped), 0.0, add_product));
+\end{codebox}
+
+\item 最后，让我们来打印结果：
+
+\begin{codebox}[cpp]
+    cout << dot_product << '\n';
+}
+\end{codebox}
+
+\item 编译运行后，得到正确的结果：
+
+\begin{codebox}[cpp]
+32
+\end{codebox}
+
+\end{enumerate}
+
+\mySmallsection{There's more...}
+
+OK，这里使用了语法糖来完成了大量的工作，不过这和Haskell的例子也相差很远，还不够优雅。我们的设计中有个很大的缺陷，那就是只能处理\texttt{double}类型的数据。通过模板代码和特化类，\texttt{zipper}类会变得更通用。这样，我们就能将\texttt{list}和\texttt{vector}或\texttt{deque}和\texttt{map}这样不相关的容器合并起来。
+
+为了让设计的类更加通用，其中设计的过程是不容忽视的。幸运的是，这样的库已经存在。Boost作为STL库的先锋，已经支持了\texttt{zip\_iterator}。这个迭代器非常简单、通用。
+
+顺便提一下，如果你想看到了使用C++实现的更优雅的点积，并且不关心\texttt{zip}迭代器相关的内容，那么你可以了解一下\texttt{std::valarray}。例子如下，自己看下：
+
+\begin{codebox}[cpp]
+#include <iostream>
+#include <valarray>
+int main()
+{
+    std::valarray<double> a {1.0, 2.0, 3.0};
+    std::valarray<double> b {4.0, 5.0, 6.0};
+    std::cout << (a * b).sum() << '\n';
+}
+\end{codebox}
+
+\textbf{范围库}
+
+这是C++中非常有趣的一个库，其支持\texttt{zipper}和所有迭代适配器、滤波器等等。其受到Boost范围库的启发，并且某段时间内里，很有可能进入C++17标准。不幸的是，我们只能在下个标准中期待这个特性的加入。这种性能可以带来更多的便利，能让我们想表达的东西通过C++快速实现，并可以通过将通用和简单的模块进行组合，来表现比较复杂的表达式。
+
+在文档中对其描述中，有个非常简单的例子：
+
+\begin{enumerate}
+\item 计算从1到10数值的平方：
+
+\begin{codebox}[cpp]
+const int sum = accumulate(view::ints(1)
+                        | view::transform([](int i){return i*i;})
+                        | view::take(10), 0); 
+\end{codebox}
+
+\item 从数值\texttt{vector}中过滤出非偶数数字，并且将剩下的数字转换成字符串：
+
+\begin{codebox}[cpp]
+std::vector<int> v {1,2,3,4,5,6,7,8,9,10};
+auto rng = v | view::remove_if([](int i){return i % 2 == 1;})
+            | view::transform([](int i){return std::to_string(i);});
+// rng == {"2"s,"4"s,"6"s,"8"s,"10"s};
+\end{codebox}
+
+\end{enumerate}
+
+如果你等不及想要了解这些有趣的特性，可以看一下范围类的文档，\texthref{https://ericniebler.github.io/range-v3} 。
+
+
